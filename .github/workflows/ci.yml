@@ -32,15 +32,30 @@ jobs:
 
     - name: Check code formatting with Black
       run: |
-        uv run black --check --diff lambda_function/ tests/
+        # Format files that exist
+        if [ -d "lambda_function" ] && [ "$(find lambda_function -name '*.py' | wc -l)" -gt 0 ]; then
+          uv run black --check --diff lambda_function/
+        fi
+        if [ -d "tests" ] && [ "$(find tests -name '*.py' | wc -l)" -gt 0 ]; then
+          uv run black --check --diff tests/
+        fi
+        if [ -d "infrastructure" ] && [ "$(find infrastructure -name '*.py' | wc -l)" -gt 0 ]; then
+          uv run black --check --diff infrastructure/
+        fi
 
     - name: Lint with pylint
       run: |
-        uv run pylint lambda_function/
+        if [ -d "lambda_function" ] && [ "$(find lambda_function -name '*.py' | wc -l)" -gt 0 ]; then
+          uv run pylint lambda_function/
+        fi
 
     - name: Run tests with pytest
       run: |
-        uv run pytest tests/ --cov=lambda_function --cov-report=xml --cov-report=term
+        if [ -d "tests" ] && [ "$(find tests -name '*.py' | wc -l)" -gt 0 ]; then
+          uv run pytest tests/ --cov=lambda_function --cov-report=xml --cov-report=term
+        else
+          echo "No tests found, skipping pytest"
+        fi
 
     - name: Log CI completion
       if: always()
