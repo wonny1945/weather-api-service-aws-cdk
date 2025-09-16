@@ -26,7 +26,9 @@ jobs:
     - name: Install dependencies
       run: |
         uv sync --dev
-        cd lambda_function && uv pip install -r requirements.txt
+        if [ -f lambda_function/requirements.txt ]; then
+          cd lambda_function && uv pip install -r requirements.txt
+        fi
 
     - name: Check code formatting with Black
       run: |
