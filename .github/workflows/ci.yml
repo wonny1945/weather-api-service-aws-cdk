@@ -1,0 +1,71 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: [3.11]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+        if [ -f lambda_function/requirements.txt ]; then
+          cd lambda_function && uv pip install -r requirements.txt
+        fi
+
+    - name: Check code formatting with Black
+      run: |
+        # Format files that exist
+        if [ -d "lambda_function" ] && [ "$(find lambda_function -name '*.py' | wc -l)" -gt 0 ]; then
+          uv run black --check --diff lambda_function/
+        fi
+        if [ -d "tests" ] && [ "$(find tests -name '*.py' | wc -l)" -gt 0 ]; then
+          uv run black --check --diff tests/
+        fi
+        if [ -d "infrastructure" ] && [ "$(find infrastructure -name '*.py' | wc -l)" -gt 0 ]; then
+          uv run black --check --diff infrastructure/
+        fi
+
+    - name: Lint with pylint
+      run: |
+        if [ -d "lambda_function" ] && [ "$(find lambda_function -name '*.py' | wc -l)" -gt 0 ]; then
+          uv run pylint lambda_function/
+        fi
+
+    - name: Run tests with pytest
+      run: |
+        if [ -d "tests" ] && [ "$(find tests -name '*.py' | wc -l)" -gt 0 ]; then
+          uv run pytest tests/ --cov=lambda_function --cov-report=xml --cov-report=term
+        else
+          echo "No tests found, skipping pytest"
+        fi
+
+    - name: Log CI completion
+      if: always()
+      run: |
+        echo "=================================="
+        echo "CI Pipeline Completed"
+        echo "=================================="
+        echo "Timestamp: $(date)"
+        echo "Branch: ${{ github.ref_name }}"
+        echo "Commit: ${{ github.sha }}"
+        echo "PR Number: ${{ github.event.number }}"
+        echo "Job Status: ${{ job.status }}"
+        echo "=================================="
