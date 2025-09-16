@@ -1,0 +1,50 @@
+# pre-commit 설정 파일
+# 커밋 시 자동으로 코드 품질 검사 및 포맷팅 실행
+
+repos:
+  # Black - 코드 포맷팅
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        args: [--line-length=88]
+
+  # Pylint - 코드 린팅 (lambda_function만)
+  - repo: https://github.com/pycqa/pylint
+    rev: v3.0.3
+    hooks:
+      - id: pylint
+        files: ^lambda_function/.*\.py$
+        args: [--max-line-length=88]
+        additional_dependencies: [boto3, pydantic, requests]
+
+  # 기본 품질 검사
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      # 파일 끝 공백 제거
+      - id: trailing-whitespace
+        files: \.(py|yaml|yml|json|md)$
+
+      # 파일 끝 개행 문자 확인
+      - id: end-of-file-fixer
+        files: \.(py|yaml|yml|json|md)$
+
+      # YAML 문법 검사
+      - id: check-yaml
+        files: \.ya?ml$
+
+      # JSON 문법 검사
+      - id: check-json
+        files: \.json$
+
+      # 큰 파일 방지 (10MB 제한)
+      - id: check-added-large-files
+        args: ['--maxkb=10240']
+
+      # 디버그 구문 확인
+      - id: debug-statements
+
+# 전역 설정
+fail_fast: false  # 하나 실패해도 모든 훅 실행
+default_stages: [pre-commit]

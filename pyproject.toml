@@ -1,0 +1,70 @@
+[project]
+name = "weather-api-service-aws-cdk"
+version = "0.1.0"
+description = "Serverless weather API service built with AWS Lambda, FastAPI, and AWS CDK"
+readme = "README.md"
+requires-python = ">=3.11.0"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "pylint>=2.17.0",
+    "pre-commit>=3.0.0",
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.pylint.main]
+py-version = "3.11"
+jobs = 0
+load-plugins = []
+
+[tool.pylint.format]
+max-line-length = 88
+
+[tool.pylint.messages_control]
+disable = [
+    "missing-module-docstring",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "too-few-public-methods",
+    "import-error"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+markers = [
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests"
+]
+
+[dependency-groups]
+dev = [
+    "black>=25.1.0",
+    "pre-commit>=4.3.0",
+    "pylint>=3.3.8",
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+]
