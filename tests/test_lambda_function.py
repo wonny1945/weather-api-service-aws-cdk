@@ -288,14 +288,14 @@ class TestErrorHandling:
         # Test single weather endpoint logging
         client.get("/weather/seoul")
 
-        mock_logger.info.assert_any_call("Fetching weather for city: seoul")
-        mock_logger.info.assert_any_call("Successfully fetched weather for seoul")
+        mock_logger.info.assert_any_call("Fetching weather for city: %s", "seoul")
+        mock_logger.info.assert_any_call("Successfully fetched weather for %s", "seoul")
 
         # Test batch weather endpoint logging
         payload = {"cities": ["seoul", "busan"]}
         client.post("/weather/batch", json=payload)
 
-        mock_logger.info.assert_any_call("Fetching weather for 2 cities")
+        mock_logger.info.assert_any_call("Fetching weather for %d cities", 2)
 
 
 class TestDocumentationEndpoints:
