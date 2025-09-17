@@ -79,7 +79,7 @@ class TestWeatherLambdaStackConfiguration:
 
             # 타임아웃은 양수이고 합리적인 범위 내에 있어야 함
             assert timeout > 0, f"{env} 환경의 타임아웃이 0 이하입니다"
-            assert timeout <= 900, f"{env} 환경의 타임아웃이 15분을 초과합니다"  # Lambda 최대 15분
+            assert timeout <= 900, f"{env} 환경의 타임아웃이 15분을 초과합니다"
 
     def test_resource_naming_convention(self):
         """Lambda 리소스 명명 규칙 테스트"""
