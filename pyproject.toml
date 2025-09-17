@@ -73,4 +73,13 @@ dev = [
     "pytest>=8.4.2",
     "pytest-cov>=7.0.0",
     "pytest-mock>=3.15.0",
+    # FastAPI and Lambda dependencies for local development
+    "fastapi>=0.104.1",
+    "uvicorn[standard]>=0.24.0",
+    "mangum>=0.17.0",
+    "httpx>=0.25.2",
+    "pydantic>=2.5.0",
+    "python-json-logger>=2.0.7",
+    "python-dotenv>=1.0.0",
+    "python-dateutil>=2.8.2",
 ]
