@@ -31,7 +31,7 @@ class WeatherLambdaStack(Stack):
         construct_id: str,
         env_name: str,
         lambda_code_path: str = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
@@ -73,18 +73,15 @@ class WeatherLambdaStack(Stack):
                 iam.ManagedPolicy.from_aws_managed_policy_name(
                     "service-role/AWSLambdaBasicExecutionRole"
                 )
-            ]
+            ],
         )
 
         # Add X-Ray tracing permissions
         role.add_to_policy(
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
-                actions=[
-                    "xray:PutTraceSegments",
-                    "xray:PutTelemetryRecords"
-                ],
-                resources=["*"]
+                actions=["xray:PutTraceSegments", "xray:PutTelemetryRecords"],
+                resources=["*"],
             )
         )
 
@@ -111,12 +108,16 @@ class WeatherLambdaStack(Stack):
             self,
             "WeatherLambdaLogGroup",
             log_group_name=f"/aws/lambda/{self.lambda_name}",
-            retention=logs.RetentionDays.ONE_WEEK
-            if self.env_name == "dev"
-            else logs.RetentionDays.TWO_WEEKS
-            if self.env_name == "staging"
-            else logs.RetentionDays.ONE_MONTH,
-            removal_policy=cdk.RemovalPolicy.DESTROY
+            retention=(
+                logs.RetentionDays.ONE_WEEK
+                if self.env_name == "dev"
+                else (
+                    logs.RetentionDays.TWO_WEEKS
+                    if self.env_name == "staging"
+                    else logs.RetentionDays.ONE_MONTH
+                )
+            ),
+            removal_policy=cdk.RemovalPolicy.DESTROY,
         )
 
         return log_group
@@ -154,7 +155,7 @@ class WeatherLambdaStack(Stack):
             tracing=lambda_.Tracing.ACTIVE,
             # Associate with log group
             log_group=self.log_group,
-            description=f"Weather API Lambda function for {self.env_name} environment"
+            description=f"Weather API Lambda function for {self.env_name} environment",
         )
 
         return lambda_function

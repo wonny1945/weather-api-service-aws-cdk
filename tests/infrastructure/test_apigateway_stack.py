@@ -36,7 +36,7 @@ class TestAPIGatewayStack:
             self.app,
             f"TestAPIGatewayStack-{env_name}",
             env_name=env_name,
-            env=cdk.Environment(account="123456789012", region="us-east-1")
+            env=cdk.Environment(account="123456789012", region="us-east-1"),
         )
 
     def test_stack_creation_dev(self):
@@ -45,10 +45,10 @@ class TestAPIGatewayStack:
 
         assert stack.env_name == "dev"
         assert stack.api_name == "dev-weather-api-api"
-        assert hasattr(stack, 'api')
-        assert hasattr(stack, 'weather_resource')
-        assert hasattr(stack, 'city_resource')
-        assert hasattr(stack, 'batch_resource')
+        assert hasattr(stack, "api")
+        assert hasattr(stack, "weather_resource")
+        assert hasattr(stack, "city_resource")
+        assert hasattr(stack, "batch_resource")
 
     def test_stack_creation_staging(self):
         """스테이징 환경 스택 생성 테스트"""
@@ -69,14 +69,25 @@ class TestAPIGatewayStack:
         # 개발 환경 설정 확인
         dev_stack = self.create_stack("dev")
         dev_config = EnvironmentConfig.get_config("dev")
-        assert dev_stack.config["api_throttling_rate"] == dev_config["api_throttling_rate"]
-        assert dev_stack.config["api_throttling_burst"] == dev_config["api_throttling_burst"]
+        assert (
+            dev_stack.config["api_throttling_rate"] == dev_config["api_throttling_rate"]
+        )
+        assert (
+            dev_stack.config["api_throttling_burst"]
+            == dev_config["api_throttling_burst"]
+        )
 
         # 프로덕션 환경 설정 확인
         prod_stack = self.create_stack("prod")
         prod_config = EnvironmentConfig.get_config("prod")
-        assert prod_stack.config["api_throttling_rate"] == prod_config["api_throttling_rate"]
-        assert prod_stack.config["api_throttling_burst"] == prod_config["api_throttling_burst"]
+        assert (
+            prod_stack.config["api_throttling_rate"]
+            == prod_config["api_throttling_rate"]
+        )
+        assert (
+            prod_stack.config["api_throttling_burst"]
+            == prod_config["api_throttling_burst"]
+        )
 
         # 개발환경과 프로덕션 환경의 설정이 다른지 확인
         assert dev_config["api_throttling_rate"] != prod_config["api_throttling_rate"]
@@ -102,9 +113,9 @@ class TestAPIGatewayStack:
         stack = self.create_stack("dev")
 
         # API URL과 ID 속성이 존재하는지 확인
-        assert hasattr(stack, 'api_url')
-        assert hasattr(stack, 'api_id')
-        assert hasattr(stack, 'api_arn')
+        assert hasattr(stack, "api_url")
+        assert hasattr(stack, "api_id")
+        assert hasattr(stack, "api_arn")
 
         # API 객체가 올바르게 생성되었는지 확인
         assert stack.api is not None
@@ -115,16 +126,16 @@ class TestAPIGatewayStack:
         stack = self.create_stack("dev")
 
         # 필수 리소스들이 생성되었는지 확인
-        assert hasattr(stack, 'weather_resource')
-        assert hasattr(stack, 'city_resource')
-        assert hasattr(stack, 'batch_resource')
+        assert hasattr(stack, "weather_resource")
+        assert hasattr(stack, "city_resource")
+        assert hasattr(stack, "batch_resource")
 
         # 리소스 객체들이 올바른 타입인지 확인
         assert isinstance(stack.weather_resource, apigateway.Resource)
         assert isinstance(stack.city_resource, apigateway.Resource)
         assert isinstance(stack.batch_resource, apigateway.Resource)
 
-    @patch('aws_cdk.aws_lambda.Function')
+    @patch("aws_cdk.aws_lambda.Function")
     def test_lambda_integration_method(self, mock_lambda):
         """Lambda 통합 메서드 테스트"""
         stack = self.create_stack("dev")
@@ -134,7 +145,7 @@ class TestAPIGatewayStack:
         mock_lambda_function.add_permission = Mock()
 
         # add_lambda_integration 메서드가 존재하는지 확인
-        assert hasattr(stack, 'add_lambda_integration')
+        assert hasattr(stack, "add_lambda_integration")
         assert callable(stack.add_lambda_integration)
 
         # 메서드 호출이 오류 없이 실행되는지 확인
@@ -151,7 +162,7 @@ class TestAPIGatewayStack:
         stack = self.create_stack("dev")
 
         # 공통 태그가 설정되었는지 확인
-        assert hasattr(stack, 'common_tags')
+        assert hasattr(stack, "common_tags")
         assert isinstance(stack.common_tags, dict)
 
         # 필수 태그들이 포함되어 있는지 확인
@@ -181,8 +192,14 @@ class TestAPIGatewayStack:
         prod_stack = self.create_stack("prod")
 
         # 프로덕션 환경이 개발 환경보다 높은 스로틀링 한도를 가져야 함
-        assert prod_stack.config["api_throttling_rate"] > dev_stack.config["api_throttling_rate"]
-        assert prod_stack.config["api_throttling_burst"] > dev_stack.config["api_throttling_burst"]
+        assert (
+            prod_stack.config["api_throttling_rate"]
+            > dev_stack.config["api_throttling_rate"]
+        )
+        assert (
+            prod_stack.config["api_throttling_burst"]
+            > dev_stack.config["api_throttling_burst"]
+        )
 
     def test_resource_naming_convention(self):
         """리소스 명명 규칙 테스트"""

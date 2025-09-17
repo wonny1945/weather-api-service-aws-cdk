@@ -130,11 +130,12 @@ class TestParseArguments:
 
 
 class TestMainFunctionConfiguration:
-    """메인 함수 설정 테스트 """
+    """메인 함수 설정 테스트"""
 
     def test_main_function_exists(self):
         """main 함수가 존재하는지 확인"""
         from app import main
+
         assert callable(main), "main 함수가 존재하지 않거나 호출할 수 없습니다"
 
     @patch("app.parse_arguments")
@@ -161,9 +162,9 @@ class TestMainFunctionConfiguration:
             aws_info = get_aws_account_and_region()
 
             # 함수들이 정상적으로 실행되는지 확인
-            assert hasattr(args, 'env')
-            assert hasattr(args, 'account')
-            assert hasattr(args, 'region')
+            assert hasattr(args, "env")
+            assert hasattr(args, "account")
+            assert hasattr(args, "region")
 
     def test_environment_fallback_logic(self):
         """환경 설정 fallback 로직 테스트"""
@@ -198,7 +199,13 @@ class TestLambdaStackIntegration:
     @patch("builtins.print")
     @patch("os.getenv")
     def test_api_gateway_stack_creation_only(
-        self, mock_getenv, mock_print, mock_api_stack, mock_app, mock_get_aws, mock_parse_args
+        self,
+        mock_getenv,
+        mock_print,
+        mock_api_stack,
+        mock_app,
+        mock_get_aws,
+        mock_parse_args,
     ):
         """API Gateway 스택만 생성되는 현재 구조 테스트"""
         # Mock 설정
@@ -235,6 +242,7 @@ class TestLambdaStackIntegration:
         # Lambda Stack import 가능성 테스트
         try:
             from stacks.lambda_stack import WeatherLambdaStack
+
             lambda_stack_importable = True
         except ImportError:
             lambda_stack_importable = False
@@ -242,6 +250,7 @@ class TestLambdaStackIntegration:
         # API Gateway Stack import 가능성 테스트
         try:
             from stacks.apigateway_stack import APIGatewayStack
+
             api_stack_importable = True
         except ImportError:
             api_stack_importable = False
@@ -292,9 +301,9 @@ class TestLambdaStackIntegration:
 
             # 2. 두 스택이 올바른 인터페이스를 가지고 있는지 확인
             # (실제 CDK 앱 없이는 스택 생성 불가하므로 클래스 존재 여부만 확인)
-            assert hasattr(WeatherLambdaStack, '__init__')
-            assert hasattr(APIGatewayStack, '__init__')
-            assert hasattr(APIGatewayStack, 'add_lambda_integration')
+            assert hasattr(WeatherLambdaStack, "__init__")
+            assert hasattr(APIGatewayStack, "__init__")
+            assert hasattr(APIGatewayStack, "add_lambda_integration")
 
         except ImportError as e:
             pytest.fail(f"Integration structure not ready: {e}")
@@ -307,7 +316,9 @@ class TestLambdaStackIntegration:
         environments = ["dev", "staging", "prod"]
 
         for env in environments:
-            stack_name = ResourcePrefixes.get_stack_name(env, ResourcePrefixes.WEATHER_API)
+            stack_name = ResourcePrefixes.get_stack_name(
+                env, ResourcePrefixes.WEATHER_API
+            )
 
             # 스택 이름이 환경을 포함하는지 확인
             assert env in stack_name

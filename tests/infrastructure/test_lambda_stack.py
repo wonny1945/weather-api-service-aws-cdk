@@ -26,6 +26,7 @@ class TestWeatherLambdaStackConfiguration:
         """Lambda Stack 클래스가 존재하는지 확인"""
         try:
             from stacks.lambda_stack import WeatherLambdaStack
+
             lambda_stack_exists = True
         except ImportError:
             lambda_stack_exists = False
@@ -37,9 +38,9 @@ class TestWeatherLambdaStackConfiguration:
         from stacks.lambda_stack import WeatherLambdaStack
 
         # 필수 메서드들이 존재하는지 확인
-        assert hasattr(WeatherLambdaStack, '__init__')
-        assert hasattr(WeatherLambdaStack, 'function_name')
-        assert hasattr(WeatherLambdaStack, 'function_arn')
+        assert hasattr(WeatherLambdaStack, "__init__")
+        assert hasattr(WeatherLambdaStack, "function_name")
+        assert hasattr(WeatherLambdaStack, "function_arn")
 
     def test_environment_configuration_loading(self):
         """환경별 설정 로딩 테스트"""
@@ -121,7 +122,7 @@ class TestWeatherLambdaStackConfiguration:
         parameters = list(init_signature.parameters.keys())
 
         # lambda_code_path 매개변수가 있는지 확인
-        assert 'lambda_code_path' in parameters, "lambda_code_path 매개변수가 없습니다"
+        assert "lambda_code_path" in parameters, "lambda_code_path 매개변수가 없습니다"
 
     def test_integration_with_api_gateway(self):
         """API Gateway와의 통합 준비 상태 테스트"""
@@ -131,7 +132,7 @@ class TestWeatherLambdaStackConfiguration:
             from stacks.apigateway_stack import APIGatewayStack
 
             # API Gateway Stack이 Lambda 통합 메서드를 가지고 있는지 확인
-            assert hasattr(APIGatewayStack, 'add_lambda_integration')
+            assert hasattr(APIGatewayStack, "add_lambda_integration")
 
             integration_ready = True
         except ImportError:
@@ -161,8 +162,8 @@ class TestWeatherLambdaStackConfiguration:
     def test_constants_consistency(self):
         """상수 설정의 일관성 테스트"""
         # ResourcePrefixes의 일관성 확인
-        assert hasattr(ResourcePrefixes, 'WEATHER_API')
-        assert hasattr(ResourcePrefixes, 'LAMBDA')
+        assert hasattr(ResourcePrefixes, "WEATHER_API")
+        assert hasattr(ResourcePrefixes, "LAMBDA")
 
         # 상수 값들이 올바른지 확인
         assert ResourcePrefixes.WEATHER_API == "weather-api"

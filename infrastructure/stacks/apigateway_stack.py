@@ -27,11 +27,7 @@ class APIGatewayStack(Stack):
     """API Gateway stack for Weather API service"""
 
     def __init__(
-        self,
-        scope: Construct,
-        construct_id: str,
-        env_name: str,
-        **kwargs
+        self, scope: Construct, construct_id: str, env_name: str, **kwargs
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
@@ -71,9 +67,9 @@ class APIGatewayStack(Stack):
                 "X-Amz-Date",
                 "Authorization",
                 "X-Api-Key",
-                "X-Amz-Security-Token"
+                "X-Amz-Security-Token",
             ],
-            allow_credentials=False
+            allow_credentials=False,
         )
 
         # Create log group
@@ -81,12 +77,16 @@ class APIGatewayStack(Stack):
             self,
             "WeatherAPIAccessLogs",
             log_group_name=f"/aws/apigateway/{self.api_name}",
-            retention=logs.RetentionDays.ONE_WEEK
-            if self.env_name == "dev"
-            else logs.RetentionDays.TWO_WEEKS
-            if self.env_name == "staging"
-            else logs.RetentionDays.ONE_MONTH,
-            removal_policy=cdk.RemovalPolicy.DESTROY
+            retention=(
+                logs.RetentionDays.ONE_WEEK
+                if self.env_name == "dev"
+                else (
+                    logs.RetentionDays.TWO_WEEKS
+                    if self.env_name == "staging"
+                    else logs.RetentionDays.ONE_MONTH
+                )
+            ),
+            removal_policy=cdk.RemovalPolicy.DESTROY,
         )
 
         # Create API Gateway
@@ -113,11 +113,11 @@ class APIGatewayStack(Stack):
                     resource_path=True,
                     response_length=True,
                     status=True,
-                    user=True
-                )
+                    user=True,
+                ),
             ),
             default_cors_preflight_options=cors_options,
-            cloud_watch_role=True
+            cloud_watch_role=True,
         )
 
         return api
@@ -147,7 +147,7 @@ class APIGatewayStack(Stack):
         lambda_integration = apigateway.LambdaIntegration(
             lambda_function,
             proxy=True,  # Proxy all requests to Lambda
-            allow_test_invoke=True
+            allow_test_invoke=True,
         )
 
         # Add Lambda integration to each endpoint
@@ -160,7 +160,7 @@ class APIGatewayStack(Stack):
             "AllowAPIGatewayInvoke",
             principal=cdk.aws_iam.ServicePrincipal("apigateway.amazonaws.com"),
             action="lambda:InvokeFunction",
-            source_arn=f"{self.api.arn_for_execute_api()}/*/*"
+            source_arn=f"{self.api.arn_for_execute_api()}/*/*",
         )
 
     def _apply_tags(self) -> None:

@@ -83,7 +83,7 @@ def main():
         stack_name,
         env_name=env,
         env=cdk_env,
-        description=f"Weather API Gateway Stack for {env} environment"
+        description=f"Weather API Gateway Stack for {env} environment",
     )
 
     print(f"Created stack: {stack_name}")

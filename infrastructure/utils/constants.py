@@ -63,12 +63,11 @@ class CORSConfig:
         "http://localhost:3000",
         "http://localhost:8080",
         "http://127.0.0.1:3000",
-        "http://127.0.0.1:8080"
+        "http://127.0.0.1:8080",
     ]
 
     STAGING_ORIGINS = [
         "if you need, you can modify it",
-    
     ]
 
     PROD_ORIGINS = [
@@ -81,7 +80,7 @@ class CORSConfig:
         origins_map = {
             "dev": cls.DEV_ORIGINS,
             "staging": cls.STAGING_ORIGINS,
-            "prod": cls.PROD_ORIGINS
+            "prod": cls.PROD_ORIGINS,
         }
         return origins_map.get(env, cls.DEV_ORIGINS)
 
