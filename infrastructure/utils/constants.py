@@ -55,6 +55,37 @@ class APIEndpoints:
     HEALTH_CHECK = "/health"
 
 
+class CORSConfig:
+    """CORS configuration for API Gateway"""
+
+    # 환경별 허용된 CORS 오리진
+    DEV_ORIGINS = [
+        "http://localhost:3000",
+        "http://localhost:8080",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8080"
+    ]
+
+    STAGING_ORIGINS = [
+        "if you need, you can modify it",
+    
+    ]
+
+    PROD_ORIGINS = [
+        "if you need, you can modify it",
+    ]
+
+    @classmethod
+    def get_allowed_origins(cls, env: str) -> list:
+        """환경별 허용된 CORS 오리진 반환"""
+        origins_map = {
+            "dev": cls.DEV_ORIGINS,
+            "staging": cls.STAGING_ORIGINS,
+            "prod": cls.PROD_ORIGINS
+        }
+        return origins_map.get(env, cls.DEV_ORIGINS)
+
+
 class ExternalAPIConfig:
     """External API configuration"""
 

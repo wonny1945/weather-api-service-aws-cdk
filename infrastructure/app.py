@@ -7,6 +7,7 @@ from botocore.exceptions import NoCredentialsError, ProfileNotFound
 
 import aws_cdk as cdk
 from utils.prefixes import ResourcePrefixes
+from stacks.apigateway_stack import APIGatewayStack
 
 
 def get_aws_account_and_region():
@@ -71,6 +72,21 @@ def main():
     print(f"Deploying to environment: {env}")
     print(f"AWS Account: {account}")
     print(f"AWS Region: {region}")
+
+    # CDK 환경 설정
+    cdk_env = cdk.Environment(account=account, region=region)
+
+    # API Gateway 스택 생성
+    stack_name = ResourcePrefixes.get_stack_name(env, ResourcePrefixes.WEATHER_API)
+    api_gateway_stack = APIGatewayStack(
+        app,
+        stack_name,
+        env_name=env,
+        env=cdk_env,
+        description=f"Weather API Gateway Stack for {env} environment"
+    )
+
+    print(f"Created stack: {stack_name}")
 
     app.synth()
 
