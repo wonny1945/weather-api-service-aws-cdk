@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-
 import os
 import argparse
 import boto3
 from botocore.exceptions import NoCredentialsError, ProfileNotFound
-
 import aws_cdk as cdk
 from utils.prefixes import ResourcePrefixes
 from stacks.apigateway_stack import APIGatewayStack
+from stacks.lambda_stack import LambdaStack
 
 
 def get_aws_account_and_region():
@@ -63,11 +62,11 @@ def main():
     if args.region:
         region = args.region
 
-    # 환경변수로 fallback
+    # 환경변수로 fallback (AWS 표준 변수 우선, CDK 변수로 fallback)
     if not account:
         account = os.getenv("CDK_DEFAULT_ACCOUNT")
     if not region:
-        region = os.getenv("CDK_DEFAULT_REGION")
+        region = os.getenv("AWS_DEFAULT_REGION") or os.getenv("CDK_DEFAULT_REGION")
 
     print(f"Deploying to environment: {env}")
     print(f"AWS Account: {account}")
@@ -76,17 +75,49 @@ def main():
     # CDK 환경 설정
     cdk_env = cdk.Environment(account=account, region=region)
 
+    # Lambda 스택 먼저 생성
+    lambda_stack_name = f"WeatherStackLambda-{env}"
+    lambda_stack = LambdaStack(
+        app,
+        lambda_stack_name,
+        env_name=env,
+        lambda_code_path="../lambda_function",
+        env=cdk_env,
+        description=f"Weather API Lambda Stack for {env} environment",
+    )
+
     # API Gateway 스택 생성
-    stack_name = ResourcePrefixes.get_stack_name(env, ResourcePrefixes.WEATHER_API)
+    api_stack_name = f"WeatherStackAPI-{env}"
     api_gateway_stack = APIGatewayStack(
         app,
-        stack_name,
+        api_stack_name,
         env_name=env,
         env=cdk_env,
         description=f"Weather API Gateway Stack for {env} environment",
     )
 
-    print(f"Created stack: {stack_name}")
+    # Lambda와 API Gateway 연결
+    api_gateway_stack.add_lambda_integration(lambda_stack.lambda_function)
+
+    # API URL 출력 추가
+    cdk.CfnOutput(
+        api_gateway_stack,
+        "WeatherAPIURL",
+        value=api_gateway_stack.api.url,
+        description=f"Weather API Gateway URL for {env} environment",
+    )
+
+    cdk.CfnOutput(
+        api_gateway_stack,
+        "WeatherAPIEndpoints",
+        value=f"""Single City: {api_gateway_stack.api.url}weather/{{city}}
+        Batch Cities: {api_gateway_stack.api.url}weather/batch
+        Health Check: {api_gateway_stack.api.url}health""",
+        description="Available API endpoints",
+    )
+
+    print(f"Created Lambda stack: {lambda_stack_name}")
+    print(f"Created API Gateway stack: {api_stack_name}")
 
     app.synth()
 
