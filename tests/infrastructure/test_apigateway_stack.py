@@ -99,11 +99,11 @@ class TestAPIGatewayStack:
         staging_origins = CORSConfig.get_allowed_origins("staging")
         prod_origins = CORSConfig.get_allowed_origins("prod")
 
-        # 개발환경은 localhost 포함해야 함
-        assert any("localhost" in origin for origin in dev_origins)
+        # 개발환경은 모든 도메인 허용 ("*") 포함해야 함
+        assert "*" in dev_origins
 
-        # 프로덕션환경은 localhost 없어야 함
-        assert not any("localhost" in origin for origin in prod_origins)
+        # 프로덕션환경은 "*" 없어야 함 (더 제한적)
+        assert "*" not in prod_origins
 
         # 각 환경별로 다른 오리진을 가져야 함
         assert dev_origins != prod_origins

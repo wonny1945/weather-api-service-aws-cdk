@@ -195,14 +195,18 @@ class TestLambdaStackIntegration:
     @patch("app.parse_arguments")
     @patch("app.get_aws_account_and_region")
     @patch("app.cdk.App")
+    @patch("app.cdk.CfnOutput")
     @patch("app.APIGatewayStack")
+    @patch("app.LambdaStack")
     @patch("builtins.print")
     @patch("os.getenv")
     def test_api_gateway_stack_creation_only(
         self,
         mock_getenv,
         mock_print,
+        mock_lambda_stack,
         mock_api_stack,
+        mock_cfn_output,
         mock_app,
         mock_get_aws,
         mock_parse_args,
@@ -212,21 +216,29 @@ class TestLambdaStackIntegration:
         mock_parse_args.return_value = Namespace(env="dev", account=None, region=None)
         mock_get_aws.return_value = ("123456789", "us-east-1")
 
-        mock_app_instance = Mock()
+        mock_app_instance = MagicMock()
         mock_app_instance.node.try_get_context.return_value = None
-        mock_app_instance.synth = Mock()
+        mock_app_instance.synth = MagicMock()
         mock_app.return_value = mock_app_instance
 
         mock_getenv.return_value = None
 
+        # Lambda 스택 Mock
+        mock_lambda_stack_instance = MagicMock()
+        mock_lambda_stack_instance.lambda_function = MagicMock()
+        mock_lambda_stack.return_value = mock_lambda_stack_instance
+
         # API Gateway 스택 Mock
-        mock_api_stack_instance = Mock()
+        mock_api_stack_instance = MagicMock()
+        mock_api_stack_instance.add_lambda_integration = MagicMock()
+        mock_api_stack_instance.api.url = "https://test-api-url/"
         mock_api_stack.return_value = mock_api_stack_instance
 
         # 함수 실행
         main()
 
-        # 검증 - API Gateway 스택이 생성되었는지 확인
+        # 검증 - 두 스택이 모두 생성되었는지 확인
+        mock_lambda_stack.assert_called_once()
         mock_api_stack.assert_called_once()
 
         # 스택 생성 인자 확인
@@ -241,7 +253,7 @@ class TestLambdaStackIntegration:
 
         # Lambda Stack import 가능성 테스트
         try:
-            from stacks.lambda_stack import WeatherLambdaStack
+            from stacks.lambda_stack import LambdaStack
 
             lambda_stack_importable = True
         except ImportError:
@@ -275,9 +287,9 @@ class TestLambdaStackIntegration:
             mock_parse_args.return_value = Namespace(env=env, account=None, region=None)
             mock_get_aws.return_value = ("123456789", "us-east-1")
 
-            mock_app_instance = Mock()
+            mock_app_instance = MagicMock()
             mock_app_instance.node.try_get_context.return_value = None
-            mock_app_instance.synth = Mock()
+            mock_app_instance.synth = MagicMock()
             mock_app.return_value = mock_app_instance
 
             mock_getenv.return_value = None
@@ -296,12 +308,12 @@ class TestLambdaStackIntegration:
 
         # 1. Lambda Stack과 API Gateway Stack이 모두 존재하는지
         try:
-            from stacks.lambda_stack import WeatherLambdaStack
+            from stacks.lambda_stack import LambdaStack
             from stacks.apigateway_stack import APIGatewayStack
 
             # 2. 두 스택이 올바른 인터페이스를 가지고 있는지 확인
             # (실제 CDK 앱 없이는 스택 생성 불가하므로 클래스 존재 여부만 확인)
-            assert hasattr(WeatherLambdaStack, "__init__")
+            assert hasattr(LambdaStack, "__init__")
             assert hasattr(APIGatewayStack, "__init__")
             assert hasattr(APIGatewayStack, "add_lambda_integration")
 

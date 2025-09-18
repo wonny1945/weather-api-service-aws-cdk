@@ -22,7 +22,7 @@ from utils.constants import EnvironmentConfig
 from utils.prefixes import ResourcePrefixes, Tags
 
 
-class WeatherLambdaStack(Stack):
+class LambdaStack(Stack):
     """Lambda stack for Weather API service"""
 
     def __init__(

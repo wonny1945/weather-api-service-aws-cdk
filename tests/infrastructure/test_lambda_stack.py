@@ -19,28 +19,28 @@ from utils.constants import EnvironmentConfig
 from utils.prefixes import ResourcePrefixes, Tags
 
 
-class TestWeatherLambdaStackConfiguration:
+class TestLambdaStackConfiguration:
     """Lambda 스택 설정 및 구조 테스트 클래스"""
 
     def test_lambda_stack_class_exists(self):
         """Lambda Stack 클래스가 존재하는지 확인"""
         try:
-            from stacks.lambda_stack import WeatherLambdaStack
+            from stacks.lambda_stack import LambdaStack
 
             lambda_stack_exists = True
         except ImportError:
             lambda_stack_exists = False
 
-        assert lambda_stack_exists, "WeatherLambdaStack 클래스를 import할 수 없습니다"
+        assert lambda_stack_exists, "LambdaStack 클래스를 import할 수 없습니다"
 
     def test_lambda_stack_interface(self):
         """Lambda Stack이 필요한 인터페이스를 가지고 있는지 확인"""
-        from stacks.lambda_stack import WeatherLambdaStack
+        from stacks.lambda_stack import LambdaStack
 
         # 필수 메서드들이 존재하는지 확인
-        assert hasattr(WeatherLambdaStack, "__init__")
-        assert hasattr(WeatherLambdaStack, "function_name")
-        assert hasattr(WeatherLambdaStack, "function_arn")
+        assert hasattr(LambdaStack, "__init__")
+        assert hasattr(LambdaStack, "function_name")
+        assert hasattr(LambdaStack, "function_arn")
 
     def test_environment_configuration_loading(self):
         """환경별 설정 로딩 테스트"""
@@ -113,12 +113,12 @@ class TestWeatherLambdaStackConfiguration:
 
     def test_lambda_code_path_flexibility(self):
         """Lambda 코드 경로 유연성 테스트"""
-        from stacks.lambda_stack import WeatherLambdaStack
+        from stacks.lambda_stack import LambdaStack
 
         # __init__ 메서드가 lambda_code_path 매개변수를 받을 수 있는지 확인
         import inspect
 
-        init_signature = inspect.signature(WeatherLambdaStack.__init__)
+        init_signature = inspect.signature(LambdaStack.__init__)
         parameters = list(init_signature.parameters.keys())
 
         # lambda_code_path 매개변수가 있는지 확인
@@ -128,7 +128,7 @@ class TestWeatherLambdaStackConfiguration:
         """API Gateway와의 통합 준비 상태 테스트"""
         # Lambda Stack과 API Gateway Stack이 모두 import 가능한지 확인
         try:
-            from stacks.lambda_stack import WeatherLambdaStack
+            from stacks.lambda_stack import LambdaStack
             from stacks.apigateway_stack import APIGatewayStack
 
             # API Gateway Stack이 Lambda 통합 메서드를 가지고 있는지 확인

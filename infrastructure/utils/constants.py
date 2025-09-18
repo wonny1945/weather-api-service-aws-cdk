@@ -60,10 +60,7 @@ class CORSConfig:
 
     # 환경별 허용된 CORS 오리진
     DEV_ORIGINS = [
-        "http://localhost:3000",
-        "http://localhost:8080",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:8080",
+        "*",  # 개발환경에서는 모든 도메인 허용
     ]
 
     STAGING_ORIGINS = [

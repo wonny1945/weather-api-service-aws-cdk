@@ -1,0 +1,67 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Set up Python 3.11
+      run: uv python install 3.11
+
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+        if [ -f lambda_function/requirements.txt ]; then
+          cd lambda_function && uv pip install -r requirements.txt
+        fi
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+
+    - name: Install Node.js for CDK
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install CDK CLI
+      run: npm install -g aws-cdk
+
+    - name: Install CDK dependencies
+      run: |
+        if [ -f infrastructure/requirements.txt ]; then
+          cd infrastructure && uv pip install -r requirements.txt
+        fi
+
+    - name: CDK Bootstrap (if needed)
+      run: |
+        cd infrastructure
+        cdk bootstrap
+
+    - name: Deploy to Development
+      run: |
+        cd infrastructure
+        cdk deploy --all --env dev --require-approval never
+
+    - name: Log deployment success
+      run: |
+        echo "=================================="
+        echo "✅ Development Deployment Success!"
+        echo "=================================="
+        echo "Timestamp: $(date)"
+        echo "Commit: ${{ github.sha }}"
+        echo "Environment: dev"
+        echo "=================================="

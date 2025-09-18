@@ -57,6 +57,32 @@ jobs:
           echo "No tests found, skipping pytest"
         fi
 
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+
+    - name: Install Node.js for CDK
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install CDK CLI
+      run: npm install -g aws-cdk
+
+    - name: Install CDK dependencies
+      run: |
+        if [ -f infrastructure/requirements.txt ]; then
+          cd infrastructure && uv pip install -r requirements.txt
+        fi
+
+    - name: CDK Synth (Validate CDK code)
+      run: |
+        cd infrastructure
+        uv run cdk synth --all
+
     - name: Log CI completion
       if: always()
       run: |
