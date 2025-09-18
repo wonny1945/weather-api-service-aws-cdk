@@ -206,4 +206,4 @@ async def global_exception_handler(request, exc):  # pylint: disable=unused-argu
 
 
 # AWS Lambda handler using Mangum
-handler = Mangum(app, lifespan="off")
+lambda_handler = Mangum(app, lifespan="off")
