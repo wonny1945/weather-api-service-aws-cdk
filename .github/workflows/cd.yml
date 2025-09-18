@@ -54,7 +54,7 @@ jobs:
     - name: Deploy to Development
       run: |
         cd infrastructure
-        cdk deploy --all --env dev --require-approval never
+        uv run cdk deploy --all --env dev --require-approval never
 
     - name: Log deployment success
       run: |
