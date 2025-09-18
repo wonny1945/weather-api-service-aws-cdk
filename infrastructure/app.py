@@ -75,7 +75,17 @@ def main():
     # CDK 환경 설정
     cdk_env = cdk.Environment(account=account, region=region)
 
-    # Lambda 스택 먼저 생성
+    # API Gateway 스택 먼저 생성 (독립적으로)
+    api_stack_name = f"WeatherStackAPI-{env}"
+    api_gateway_stack = APIGatewayStack(
+        app,
+        api_stack_name,
+        env_name=env,
+        env=cdk_env,
+        description=f"Weather API Gateway Stack for {env} environment",
+    )
+
+    # Lambda 스택 생성 (독립적으로)
     lambda_stack_name = f"WeatherStackLambda-{env}"
     lambda_stack = LambdaStack(
         app,
@@ -86,18 +96,10 @@ def main():
         description=f"Weather API Lambda Stack for {env} environment",
     )
 
-    # API Gateway 스택 생성
-    api_stack_name = f"WeatherStackAPI-{env}"
-    api_gateway_stack = APIGatewayStack(
-        app,
-        api_stack_name,
-        env_name=env,
-        env=cdk_env,
-        description=f"Weather API Gateway Stack for {env} environment",
+    # Lambda와 API Gateway 명시적 연결
+    api_gateway_stack.add_lambda_integration(
+        lambda_function=lambda_stack.lambda_function
     )
-
-    # Lambda와 API Gateway 연결
-    api_gateway_stack.add_lambda_integration(lambda_stack.lambda_function)
 
     # API URL 출력 추가
     cdk.CfnOutput(

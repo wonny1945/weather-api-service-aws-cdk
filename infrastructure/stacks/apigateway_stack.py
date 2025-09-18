@@ -137,10 +137,15 @@ class APIGatewayStack(Stack):
         # GET /health - Health check
         self.health_resource = self.api.root.add_resource("health")
 
-    def add_lambda_integration(self, lambda_function: lambda_.Function) -> None:
+    def add_lambda_integration(
+        self,
+        lambda_function: lambda_.Function,
+        paths: list = None,
+        methods: list = None,
+    ) -> None:
         """
         Connect Lambda function to API Gateway endpoints
-        This method is called after the Lambda function is created.
+        This method is called after both stacks are created.
         """
 
         # Create Lambda integration
@@ -150,18 +155,13 @@ class APIGatewayStack(Stack):
             allow_test_invoke=True,
         )
 
-        # Add Lambda integration to each endpoint
+        # Add Lambda integration to all weather API endpoints
         self.city_resource.add_method("GET", lambda_integration)
         self.batch_resource.add_method("POST", lambda_integration)
         self.health_resource.add_method("GET", lambda_integration)
 
-        # Grant API Gateway permission to invoke Lambda function
-        lambda_function.add_permission(
-            "AllowAPIGatewayInvoke",
-            principal=cdk.aws_iam.ServicePrincipal("apigateway.amazonaws.com"),
-            action="lambda:InvokeFunction",
-            source_arn=f"{self.api.arn_for_execute_api()}/*/*",
-        )
+        # Note: LambdaIntegration automatically grants necessary permissions
+        # Manual add_permission is not required and causes circular dependency
 
     def _apply_tags(self) -> None:
         """Apply common tags to the stack"""
