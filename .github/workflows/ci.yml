@@ -81,7 +81,7 @@ jobs:
     - name: CDK Synth (Validate CDK code)
       run: |
         cd infrastructure
-        cdk synth --all
+        uv run cdk synth --all
 
     - name: Log CI completion
       if: always()
