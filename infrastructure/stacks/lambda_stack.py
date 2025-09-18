@@ -126,11 +126,19 @@ class LambdaStack(Stack):
         """Create Lambda function"""
 
         # Use provided code path or default asset location
-        if self.lambda_code_path:
-            code = lambda_.Code.from_asset(self.lambda_code_path)
-        else:
-            # Default to expecting lambda code in ../lambda_src directory
-            code = lambda_.Code.from_asset("../lambda_src")
+        asset_path = self.lambda_code_path
+
+        code = lambda_.Code.from_asset(
+            asset_path,
+            bundling=lambda_.BundlingOptions(
+                image=lambda_.Runtime.PYTHON_3_11.bundling_image,
+                command=[
+                    "bash",
+                    "-c",
+                    "pip install -r requirements.txt -t /asset-output && cp -au . /asset-output",
+                ],
+            ),
+        )
 
         lambda_function = lambda_.Function(
             self,

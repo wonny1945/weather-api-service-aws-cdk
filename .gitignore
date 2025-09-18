@@ -8,6 +8,8 @@ wheels/
 
 # Virtual environments
 .venv
-
 .env
-cdk.out
+
+# CDK.out 
+cdk.out/
+infrastructure/cdk.out/synth.lock
