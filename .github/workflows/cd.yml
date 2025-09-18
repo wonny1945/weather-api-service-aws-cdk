@@ -49,7 +49,7 @@ jobs:
     - name: CDK Bootstrap (if needed)
       run: |
         cd infrastructure
-        cdk bootstrap
+        uv run cdk bootstrap
 
     - name: Deploy to Development
       run: |
