@@ -12,6 +12,7 @@ This stack creates the following components:
 import aws_cdk as cdk
 from aws_cdk import (
     Stack,
+    BundlingOptions,
     aws_lambda as lambda_,
     aws_iam as iam,
     aws_logs as logs,
@@ -130,7 +131,7 @@ class LambdaStack(Stack):
 
         code = lambda_.Code.from_asset(
             asset_path,
-            bundling=lambda_.BundlingOptions(
+            bundling=BundlingOptions(
                 image=lambda_.Runtime.PYTHON_3_11.bundling_image,
                 command=[
                     "bash",
