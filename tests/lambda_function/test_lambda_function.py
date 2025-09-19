@@ -9,13 +9,14 @@ from unittest.mock import patch, AsyncMock
 from datetime import datetime
 
 # Import the FastAPI app
-from lambda_function.lambda_function import (
-    app,
+from lambda_function.lambda_function import app
+from lambda_function.models import (
     WeatherResponse,
     BatchWeatherRequest,
     BatchWeatherResponse,
     ErrorResponse,
 )
+from lambda_function.external_api import WeatherAPIError
 
 
 # Test client fixture
@@ -85,7 +86,7 @@ class TestHealthEndpoint:
         assert "timestamp" in data
         assert "Service is running" in data["message"]
 
-    @patch("lambda_function.weather_service.WeatherService")
+    @patch("lambda_function.lambda_function.WeatherService")
     def test_health_check_with_valid_api_key(self, mock_weather_service, client):
         """Test health check with valid API key validates external API."""
         # Mock successful health check
@@ -106,11 +107,11 @@ class TestHealthEndpoint:
         assert "checks" in data
         mock_weather_service.assert_called_once_with(TEST_API_KEY)
 
-    @patch("lambda_function.weather_service.WeatherService")
+    @patch("lambda_function.lambda_function.WeatherService")
     def test_health_check_with_invalid_api_key(self, mock_weather_service, client):
         """Test health check with invalid API key returns error status."""
-        # Mock service that raises exception
-        mock_weather_service.side_effect = Exception("Invalid API key")
+        # Mock service that raises WeatherAPIError
+        mock_weather_service.side_effect = WeatherAPIError("Invalid API key", 401)
 
         response = client.get(f"/health?api_key=invalid_key")
 
@@ -125,7 +126,7 @@ class TestHealthEndpoint:
 class TestSingleWeatherEndpoint:
     """Test cases for the single city weather endpoint."""
 
-    @patch("lambda_function.weather_service.WeatherService")
+    @patch("lambda_function.lambda_function.WeatherService")
     def test_get_weather_success(self, mock_weather_service, client):
         """Test successful weather retrieval for a city."""
         # Mock the WeatherService
@@ -169,10 +170,9 @@ class TestSingleWeatherEndpoint:
         data = response.json()
         assert "API key is required" in data["detail"]
 
-    @patch("lambda_function.weather_service.WeatherService")
+    @patch("lambda_function.lambda_function.WeatherService")
     def test_get_weather_invalid_api_key(self, mock_weather_service, client):
         """Test weather endpoint with invalid API key."""
-        from lambda_function.external_api import WeatherAPIError
 
         mock_service_instance = AsyncMock()
         mock_service_instance.get_weather.side_effect = WeatherAPIError(
@@ -186,10 +186,9 @@ class TestSingleWeatherEndpoint:
         data = response.json()
         assert "Invalid API key" in data["detail"]
 
-    @patch("lambda_function.weather_service.WeatherService")
+    @patch("lambda_function.lambda_function.WeatherService")
     def test_get_weather_city_not_found(self, mock_weather_service, client):
         """Test weather endpoint with non-existent city."""
-        from lambda_function.external_api import WeatherAPIError
 
         mock_service_instance = AsyncMock()
         mock_service_instance.get_weather.side_effect = WeatherAPIError(
@@ -203,10 +202,9 @@ class TestSingleWeatherEndpoint:
         data = response.json()
         assert "City 'nonexistent' not found" in data["detail"]
 
-    @patch("lambda_function.weather_service.WeatherService")
+    @patch("lambda_function.lambda_function.WeatherService")
     def test_get_weather_service_unavailable(self, mock_weather_service, client):
         """Test weather endpoint when external service is unavailable."""
-        from lambda_function.external_api import WeatherAPIError
 
         mock_service_instance = AsyncMock()
         mock_service_instance.get_weather.side_effect = WeatherAPIError(
@@ -220,7 +218,7 @@ class TestSingleWeatherEndpoint:
         data = response.json()
         assert "Weather service unavailable" in data["detail"]
 
-    @patch("lambda_function.weather_service.WeatherService")
+    @patch("lambda_function.lambda_function.WeatherService")
     def test_get_weather_different_cities(self, mock_weather_service, client):
         """Test weather endpoint with different city names."""
         mock_service_instance = AsyncMock()
@@ -247,7 +245,7 @@ class TestSingleWeatherEndpoint:
     def test_get_weather_timestamp_format(self, client):
         """Test that timestamp is in correct ISO format."""
         with patch(
-            "lambda_function.weather_service.WeatherService"
+            "lambda_function.lambda_function.WeatherService"
         ) as mock_weather_service:
             mock_service_instance = AsyncMock()
             mock_service_instance.get_weather.return_value = MOCK_WEATHER_DATA
@@ -265,7 +263,7 @@ class TestSingleWeatherEndpoint:
     def test_get_weather_response_model_validation(self, client):
         """Test that response matches WeatherResponse model."""
         with patch(
-            "lambda_function.weather_service.WeatherService"
+            "lambda_function.lambda_function.WeatherService"
         ) as mock_weather_service:
             mock_service_instance = AsyncMock()
             mock_service_instance.get_weather.return_value = MOCK_WEATHER_DATA
@@ -282,7 +280,7 @@ class TestSingleWeatherEndpoint:
 class TestBatchWeatherEndpoint:
     """Test cases for the batch weather endpoint."""
 
-    @patch("lambda_function.weather_service.WeatherService")
+    @patch("lambda_function.lambda_function.WeatherService")
     def test_batch_weather_success(self, mock_weather_service, client):
         """Test successful batch weather retrieval."""
         # Mock the WeatherService
@@ -328,7 +326,7 @@ class TestBatchWeatherEndpoint:
         mock_weather_service.assert_called_once_with(TEST_API_KEY)
         mock_service_instance.get_batch_weather.assert_called_once_with(cities, 10)
 
-    @patch("lambda_function.weather_service.WeatherService")
+    @patch("lambda_function.lambda_function.WeatherService")
     def test_batch_weather_single_city(self, mock_weather_service, client):
         """Test batch endpoint with single city."""
         mock_service_instance = AsyncMock()
@@ -348,7 +346,7 @@ class TestBatchWeatherEndpoint:
         assert data["successful_requests"] == 1
         assert len(data["results"]) == 1
 
-    @patch("lambda_function.weather_service.WeatherService")
+    @patch("lambda_function.lambda_function.WeatherService")
     def test_batch_weather_max_cities(self, mock_weather_service, client):
         """Test batch endpoint with maximum allowed cities."""
         mock_service_instance = AsyncMock()
@@ -398,10 +396,9 @@ class TestBatchWeatherEndpoint:
         data = response.json()
         assert "API key is required" in data["detail"]
 
-    @patch("lambda_function.weather_service.WeatherService")
+    @patch("lambda_function.lambda_function.WeatherService")
     def test_batch_weather_invalid_api_key(self, mock_weather_service, client):
         """Test batch endpoint with invalid API key."""
-        from lambda_function.external_api import WeatherAPIError
 
         mock_service_instance = AsyncMock()
         mock_service_instance.get_batch_weather.side_effect = WeatherAPIError(
@@ -434,7 +431,7 @@ class TestBatchWeatherEndpoint:
     def test_batch_weather_response_model_validation(self, client):
         """Test that batch response matches BatchWeatherResponse model."""
         with patch(
-            "lambda_function.weather_service.WeatherService"
+            "lambda_function.lambda_function.WeatherService"
         ) as mock_weather_service:
             mock_service_instance = AsyncMock()
             mock_batch_response = BatchWeatherResponse(
@@ -544,7 +541,7 @@ class TestErrorHandling:
         )
         assert response.status_code == 422
 
-    @patch("lambda_function.weather_service.WeatherService")
+    @patch("lambda_function.lambda_function.WeatherService")
     def test_logging_calls(self, mock_weather_service, client):
         """Test that appropriate logging calls are made."""
         mock_service_instance = AsyncMock()
@@ -557,7 +554,7 @@ class TestErrorHandling:
         # Verify service was called (logging happens within the service)
         mock_weather_service.assert_called_with(TEST_API_KEY)
 
-    @patch("lambda_function.weather_service.WeatherService")
+    @patch("lambda_function.lambda_function.WeatherService")
     def test_unexpected_error_handling(self, mock_weather_service, client):
         """Test handling of unexpected errors."""
         mock_service_instance = AsyncMock()
@@ -627,7 +624,7 @@ class TestCORSConfiguration:
 class TestIntegrationWorkflow:
     """Integration tests for complete API workflow."""
 
-    @patch("lambda_function.weather_service.WeatherService")
+    @patch("lambda_function.lambda_function.WeatherService")
     def test_complete_api_workflow(self, mock_weather_service, client):
         """Test complete workflow: root -> health -> single -> batch."""
         # Mock the WeatherService
