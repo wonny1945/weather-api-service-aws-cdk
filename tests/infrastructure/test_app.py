@@ -11,10 +11,6 @@ import sys
 import os
 from unittest.mock import Mock, patch, MagicMock
 from argparse import Namespace
-
-# infrastructure 모듈을 import할 수 있도록 path 추가
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../infrastructure"))
-
 from app import get_aws_account_and_region, parse_arguments, main
 
 

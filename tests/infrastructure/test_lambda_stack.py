@@ -11,10 +11,6 @@ CDK Mock 호환성 문제를 피하고 실용적인 테스트에 집중:
 import pytest
 import sys
 import os
-
-# infrastructure 모듈을 import할 수 있도록 path 추가
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../infrastructure"))
-
 from utils.constants import EnvironmentConfig
 from utils.prefixes import ResourcePrefixes, Tags
 
