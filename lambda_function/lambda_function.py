@@ -4,14 +4,19 @@ AWS Lambda handler with FastAPI application for weather API service.
 
 import logging
 import os
-from typing import List
 from datetime import datetime
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from mangum import Mangum
-from pydantic import BaseModel
+from lambda_function.external_api import WeatherAPIError
+from lambda_function.weather_service import WeatherService
+from lambda_function.models import (
+    WeatherResponse,
+    BatchWeatherRequest,
+    BatchWeatherResponse,
+)
 
 # Simple configuration
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
@@ -23,6 +28,9 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+# Note: Weather service is now created per-request with user's API key
+# No global service instance needed
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -43,29 +51,32 @@ app.add_middleware(
 )
 
 
-# Pydantic models for request/response validation
-class WeatherResponse(BaseModel):
-    city: str
-    temperature: float
-    description: str
-    humidity: int
-    timestamp: str
-
-
-class BatchWeatherRequest(BaseModel):
-    cities: List[str]
-
-
-class BatchWeatherResponse(BaseModel):
-    results: List[WeatherResponse]
-    total_cities: int
-    successful_requests: int
-
-
-class ErrorResponse(BaseModel):
-    error: str
-    message: str
-    status_code: int
+# Health check endpoint
+@app.get("/health")
+async def health_check(api_key: str = None):
+    """Health check endpoint with optional API validation."""
+    try:
+        if api_key:
+            # Test with user's API key
+            service = WeatherService(api_key.strip())
+            health_status = await service.health_check()
+        else:
+            # Basic service health without API key
+            health_status = {
+                "status": "healthy",
+                "timestamp": datetime.now().isoformat(),
+                "message": (
+                    "Service is running " "(no API key provided for external API test)"
+                ),
+            }
+        return health_status
+    except (WeatherAPIError, ValueError) as e:
+        logger.error("Health check failed: %s", str(e))
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat(),
+        }
 
 
 # Root endpoint
@@ -77,8 +88,9 @@ async def root():
         "version": "1.0.0",
         "status": "active",
         "endpoints": {
-            "single_weather": "/weather/{city}",
+            "single_weather": "/weather/{city}?api_key=YOUR_API_KEY",
             "batch_weather": "/weather/batch",
+            "health_check": "/health?api_key=YOUR_API_KEY",
             "documentation": "/docs",
         },
     }
@@ -86,12 +98,13 @@ async def root():
 
 # Single city weather endpoint
 @app.get("/weather/{city}", response_model=WeatherResponse)
-async def get_weather(city: str):
+async def get_weather(city: str, api_key: str):
     """
     Get weather information for a single city.
 
     Args:
         city: Name of the city to get weather for
+        api_key: OpenWeatherMap API key
 
     Returns:
         WeatherResponse: Weather information for the specified city
@@ -100,23 +113,34 @@ async def get_weather(city: str):
         HTTPException: If city is not found or service unavailable
     """
     try:
-        logger.info("Fetching weather for city: %s", city)
+        # Validate API key
+        if not api_key or not api_key.strip():
+            raise HTTPException(status_code=400, detail="API key is required")
 
-        # NOTE: Using mock data - will be replaced with OpenWeatherMap API
-        # Provides consistent response structure for testing
-        mock_weather = {
-            "city": city,
-            "temperature": 22.5,
-            "description": "Partly cloudy",
-            "humidity": 65,
-            "timestamp": datetime.now().isoformat() + "Z",
-        }
+        # Create service with user's API key
+        service = WeatherService(api_key.strip())
+        weather_data = await service.get_weather(city)
+        return weather_data
 
-        logger.info("Successfully fetched weather for %s", city)
-        return WeatherResponse(**mock_weather)
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is (e.g., API key validation errors)
+        raise
+
+    except WeatherAPIError as e:
+        logger.warning("Weather API error for %s: %s", city, str(e))
+        if e.status_code == 404:
+            raise HTTPException(
+                status_code=404, detail=f"City '{city}' not found"
+            ) from e
+        if e.status_code == 401:
+            raise HTTPException(status_code=401, detail="Invalid API key") from e
+        # For other status codes
+        raise HTTPException(
+            status_code=503, detail="Weather service unavailable"
+        ) from e
 
     except Exception as e:
-        logger.error("Error fetching weather for %s: %s", city, str(e))
+        logger.error("Unexpected error fetching weather for %s: %s", city, str(e))
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch weather data for {city}"
         ) from e
@@ -129,7 +153,7 @@ async def get_batch_weather(request: BatchWeatherRequest):
     Get weather information for multiple cities.
 
     Args:
-        request: BatchWeatherRequest containing list of cities
+        request: BatchWeatherRequest containing list of cities and API key
 
     Returns:
         BatchWeatherResponse: Weather information for all cities
@@ -138,53 +162,25 @@ async def get_batch_weather(request: BatchWeatherRequest):
         HTTPException: If request is invalid or service unavailable
     """
     try:
-        logger.info("Fetching weather for %d cities", len(request.cities))
+        # Validate API key
+        if not request.api_key or not request.api_key.strip():
+            raise HTTPException(status_code=400, detail="API key is required")
 
-        if not request.cities:
-            raise HTTPException(status_code=400, detail="Cities list cannot be empty")
-
-        if len(request.cities) > MAX_BATCH_CITIES:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Maximum {MAX_BATCH_CITIES} cities allowed per batch request",
-            )
-
-        # NOTE: Using mock data for batch - will be replaced with concurrent API calls
-        # Ensures consistent testing of batch endpoint logic
-        results = []
-        successful_requests = 0
-
-        for city in request.cities:
-            try:
-                mock_weather = {
-                    "city": city,
-                    "temperature": 22.5,
-                    "description": "Partly cloudy",
-                    "humidity": 65,
-                    "timestamp": datetime.now().isoformat() + "Z",
-                }
-                results.append(WeatherResponse(**mock_weather))
-                successful_requests += 1
-            except (ValueError, TypeError, KeyError) as e:
-                logger.warning("Failed to fetch weather for %s: %s", city, str(e))
-                # Continue processing other cities
-
-        logger.info(
-            "Successfully processed %d/%d cities",
-            successful_requests,
-            len(request.cities),
-        )
-
-        return BatchWeatherResponse(
-            results=results,
-            total_cities=len(request.cities),
-            successful_requests=successful_requests,
-        )
+        # Create service with user's API key
+        service = WeatherService(request.api_key.strip())
+        batch_data = await service.get_batch_weather(request.cities, MAX_BATCH_CITIES)
+        return batch_data
 
     except HTTPException:
+        # Re-raise HTTP exceptions as-is (e.g., API key validation errors)
         raise
+
+    except WeatherAPIError as e:
+        logger.warning("Weather API error in batch request: %s", str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
     except Exception as e:
-        logger.error("Error in batch weather request: %s", str(e))
+        logger.error("Unexpected error in batch weather request: %s", str(e))
         raise HTTPException(
             status_code=500, detail="Failed to process batch weather request"
         ) from e

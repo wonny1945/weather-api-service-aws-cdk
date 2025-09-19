@@ -15,10 +15,6 @@ import os
 from unittest.mock import Mock, patch
 import aws_cdk as cdk
 from aws_cdk import aws_apigateway as apigateway
-
-# infrastructure 모듈을 import할 수 있도록 path 추가
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../infrastructure"))
-
 from stacks.apigateway_stack import APIGatewayStack
 from utils.constants import EnvironmentConfig, CORSConfig
 
