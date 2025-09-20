@@ -32,6 +32,8 @@ class LambdaStack(Stack):
         construct_id: str,
         env_name: str,
         lambda_code_path: str = None,
+        dynamodb_table_name: str = None,
+        dynamodb_table_arn: str = None,
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
@@ -40,6 +42,8 @@ class LambdaStack(Stack):
         self.env_name = env_name
         self.config = EnvironmentConfig.get_config(env_name)
         self.lambda_code_path = lambda_code_path
+        self.dynamodb_table_name = dynamodb_table_name
+        self.dynamodb_table_arn = dynamodb_table_arn
 
         # Generate resource names
         self.lambda_name = ResourcePrefixes.get_resource_name(
@@ -86,19 +90,22 @@ class LambdaStack(Stack):
             )
         )
 
-        # TODO: Add DynamoDB permissions when caching is implemented
-        # role.add_to_policy(
-        #     iam.PolicyStatement(
-        #         effect=iam.Effect.ALLOW,
-        #         actions=[
-        #             "dynamodb:GetItem",
-        #             "dynamodb:PutItem",
-        #             "dynamodb:UpdateItem",
-        #             "dynamodb:DeleteItem"
-        #         ],
-        #         resources=[dynamodb_table_arn]
-        #     )
-        # )
+        # Add DynamoDB permissions for caching
+        if self.dynamodb_table_arn:
+            role.add_to_policy(
+                iam.PolicyStatement(
+                    effect=iam.Effect.ALLOW,
+                    actions=[
+                        "dynamodb:GetItem",
+                        "dynamodb:PutItem",
+                        "dynamodb:UpdateItem",
+                        "dynamodb:DeleteItem",
+                        "dynamodb:BatchGetItem",
+                        "dynamodb:BatchWriteItem",
+                    ],
+                    resources=[self.dynamodb_table_arn],
+                )
+            )
 
         return role
 
@@ -156,9 +163,8 @@ class LambdaStack(Stack):
             environment={
                 "ENV": self.env_name,
                 "LOG_LEVEL": "DEBUG" if self.env_name == "dev" else "INFO",
-                # TODO: Add these when implementing actual functionality
-                # "CACHE_TTL_MINUTES": str(self.config["cache_ttl_minutes"]),
-                # "DYNAMODB_TABLE_NAME": dynamodb_table_name
+                "CACHE_TTL_MINUTES": str(self.config["cache_ttl_minutes"]),
+                "DYNAMODB_TABLE_NAME": self.dynamodb_table_name or "",
             },
             # Enable X-Ray tracing
             tracing=lambda_.Tracing.ACTIVE,

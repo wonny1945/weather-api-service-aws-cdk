@@ -7,6 +7,7 @@ import aws_cdk as cdk
 from utils.prefixes import ResourcePrefixes
 from stacks.apigateway_stack import APIGatewayStack
 from stacks.lambda_stack import LambdaStack
+from stacks.dynamodb_stack import DynamoDbStack
 
 
 def get_aws_account_and_region():
@@ -75,7 +76,17 @@ def main():
     # CDK 환경 설정
     cdk_env = cdk.Environment(account=account, region=region)
 
-    # API Gateway 스택 먼저 생성 (독립적으로)
+    # DynamoDB 스택 먼저 생성 (독립적으로)
+    dynamodb_stack_name = f"WeatherStackDynamoDB-{env}"
+    dynamodb_stack = DynamoDbStack(
+        app,
+        dynamodb_stack_name,
+        env_name=env,
+        env=cdk_env,
+        description=f"Weather API DynamoDB Stack for {env} environment",
+    )
+
+    # API Gateway 스택 생성 (독립적으로)
     api_stack_name = f"WeatherStackAPI-{env}"
     api_gateway_stack = APIGatewayStack(
         app,
@@ -85,13 +96,15 @@ def main():
         description=f"Weather API Gateway Stack for {env} environment",
     )
 
-    # Lambda 스택 생성 (독립적으로)
+    # Lambda 스택 생성 (DynamoDB 테이블 정보 포함)
     lambda_stack_name = f"WeatherStackLambda-{env}"
     lambda_stack = LambdaStack(
         app,
         lambda_stack_name,
         env_name=env,
         lambda_code_path="../lambda_function",
+        dynamodb_table_name=dynamodb_stack.table_name_output,
+        dynamodb_table_arn=dynamodb_stack.table_arn,
         env=cdk_env,
         description=f"Weather API Lambda Stack for {env} environment",
     )
@@ -118,6 +131,7 @@ def main():
         description="Available API endpoints",
     )
 
+    print(f"Created DynamoDB stack: {dynamodb_stack_name}")
     print(f"Created Lambda stack: {lambda_stack_name}")
     print(f"Created API Gateway stack: {api_stack_name}")
 
