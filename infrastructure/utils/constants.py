@@ -85,5 +85,8 @@ class ExternalAPIConfig:
 
     OPENWEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5"
     OPENWEATHER_TIMEOUT = 10
+
+    # Legacy retry settings (kept for backward compatibility)
+    # Note: Actual retry logic is now implemented in lambda_function/config.py
     RETRY_MAX_ATTEMPTS = 3
     RETRY_BACKOFF_MULTIPLIER = 2
