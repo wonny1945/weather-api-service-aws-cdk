@@ -50,6 +50,8 @@ jobs:
         fi
 
     - name: Run tests with pytest
+      env:
+        TEST_OPENWEATHER_API_KEY: ${{ secrets.TEST_OPENWEATHER_API_KEY }}
       run: |
         if [ -d "tests" ] && [ "$(find tests -name '*.py' | wc -l)" -gt 0 ]; then
           uv run pytest tests/ --cov=lambda_function --cov-report=xml --cov-report=term
