@@ -30,7 +30,7 @@ class RetryError(Exception):
 class RetryConfig:
     """Configuration for retry behavior."""
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(  # pylint: disable=too-many-arguments,R0917
         self,
         max_attempts: int = 3,
         base_delay: float = 1.0,
