@@ -6,6 +6,7 @@ import logging
 import os
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict
+from decimal import Decimal
 
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
@@ -163,7 +164,7 @@ class DynamoDBCacheService:
                     "PK": cache_key,
                     "SK": "DATA",
                     "city": weather_data.city,
-                    "temperature": weather_data.temperature,
+                    "temperature": Decimal(str(weather_data.temperature)),
                     "description": weather_data.description,
                     "humidity": weather_data.humidity,
                     "timestamp": weather_data.timestamp,
@@ -264,7 +265,7 @@ class DynamoDBCacheService:
                                 "PK": cache_key,
                                 "SK": "DATA",
                                 "city": weather_data.city,
-                                "temperature": weather_data.temperature,
+                                "temperature": Decimal(str(weather_data.temperature)),
                                 "description": weather_data.description,
                                 "humidity": weather_data.humidity,
                                 "timestamp": weather_data.timestamp,
