@@ -10,9 +10,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from mangum import Mangum
-from lambda_function.external_api import WeatherAPIError
-from lambda_function.weather_service import WeatherService
-from lambda_function.models import (
+from external_api import WeatherAPIError
+from weather_service import WeatherService
+from models import (
     WeatherResponse,
     BatchWeatherRequest,
     BatchWeatherResponse,

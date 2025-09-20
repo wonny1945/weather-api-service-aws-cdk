@@ -27,6 +27,10 @@ uv add --dev pytest pytest-cov black pylint
 cp .env.example .env
 # Edit .env with OPENWEATHER_API_KEY and other settings
 
+# Setup test environment variables (for local testing)
+cp .env.local.example .env.local
+# Edit .env.local with TEST_OPENWEATHER_API_KEY for running tests
+
 # Development commands
 cd lambda_function && python lambda_function.py  # Local test
 sam local start-api                               # Lambda simulation
@@ -132,6 +136,13 @@ uv.lock              # uv dependency lock file
 - Development, staging, and production environments use separate AWS resources
 - Each environment has different Lambda memory allocations and concurrency limits
 - API keys stored securely in AWS Systems Manager Parameter Store
+
+### CI/CD Environment Variables
+For GitHub Actions CI pipeline, set the following secrets in your repository:
+- `TEST_OPENWEATHER_API_KEY` - OpenWeatherMap API key for running tests
+- `AWS_ACCESS_KEY_ID` - AWS access key for CDK deployment
+- `AWS_SECRET_ACCESS_KEY` - AWS secret key for CDK deployment
+- `AWS_DEFAULT_REGION` - AWS region for deployment
 
 ### Caching Strategy
 - 10-minute TTL for weather data

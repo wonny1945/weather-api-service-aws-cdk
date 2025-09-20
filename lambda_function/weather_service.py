@@ -5,13 +5,12 @@ Weather service layer with caching and business logic.
 import logging
 from datetime import datetime, timezone
 from typing import List, Dict
-
-from lambda_function.external_api import (
+from external_api import (
     OpenWeatherMapClient,
     WeatherAPIError,
     OpenWeatherMapResponse,
 )
-from lambda_function.models import WeatherResponse, BatchWeatherResponse
+from models import WeatherResponse, BatchWeatherResponse
 
 logger = logging.getLogger(__name__)
 
