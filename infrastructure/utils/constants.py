@@ -31,9 +31,7 @@ class EnvironmentConfig:
     PROD = {
         "lambda_memory": 1024,
         "lambda_timeout": 30,
-        "dynamodb_billing_mode": "PROVISIONED",
-        "dynamodb_read_capacity": 10,
-        "dynamodb_write_capacity": 5,
+        "dynamodb_billing_mode": "PAY_PER_REQUEST",
         "api_throttling_rate": 1000,
         "api_throttling_burst": 2000,
         "cache_ttl_minutes": 10,

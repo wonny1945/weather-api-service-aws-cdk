@@ -17,10 +17,6 @@ class ResourcePrefixes:
     # Resource type prefixes
     LAMBDA = "lambda"
     API_GW = "api"
-    DYNAMODB = "db"
-    S3 = "s3"
-    IAM = "iam"
-    LOG_GROUP = "log"
 
     @classmethod
     def get_resource_name(
@@ -31,12 +27,6 @@ class ResourcePrefixes:
         if name:
             parts.append(name)
         return "-".join(parts)
-
-    @classmethod
-    def get_stack_name(cls, env: str, service: str = None) -> str:
-        """Generate standardized stack name"""
-        service = service or cls.WEATHER_API
-        return f"{service.title()}Stack-{env}"
 
 
 class Tags:
