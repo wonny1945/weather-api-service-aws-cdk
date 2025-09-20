@@ -2,6 +2,7 @@
 Weather service layer with caching and business logic.
 """
 
+import os
 import logging
 from datetime import datetime, timezone
 from typing import List, Dict
@@ -11,6 +12,7 @@ from external_api import (
     OpenWeatherMapResponse,
 )
 from models import WeatherResponse, BatchWeatherResponse
+from cache_service import DynamoDBCacheService, CacheError
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +30,17 @@ class WeatherService:
             api_key: OpenWeatherMap API key
         """
         self.api_client = OpenWeatherMapClient(api_key)
-        # Caching layer can be added later with DynamoDB or Redis
+
+        # Initialize DynamoDB cache service
+        try:
+            ttl_minutes = int(os.getenv("CACHE_TTL_MINUTES", "10"))
+            self.cache_service = DynamoDBCacheService(ttl_minutes=ttl_minutes)
+            logger.info("DynamoDB cache service initialized successfully")
+        except (CacheError, ValueError) as e:
+            logger.warning(
+                "Failed to initialize cache service: %s. Proceeding without cache.", e
+            )
+            self.cache_service = None
 
     async def get_weather(self, city: str) -> WeatherResponse:
         """
@@ -44,13 +56,22 @@ class WeatherService:
             WeatherAPIError: If weather data cannot be retrieved
         """
         try:
-            # Future enhancement: Check cache before API call
+            # Check cache first
+            if self.cache_service:
+                cached_response = await self.cache_service.get_weather(city)
+                if cached_response:
+                    logger.debug("Returning cached weather for %s", city)
+                    return cached_response
+
+            # Cache miss - fetch from API
             weather_data = await self.api_client.get_weather(city)
 
             # Convert to our internal format
             response = self._convert_to_weather_response(weather_data)
 
-            # Future enhancement: Cache response for subsequent requests
+            # Cache the response
+            if self.cache_service:
+                await self.cache_service.set_weather(response)
 
             return response
 
@@ -89,17 +110,51 @@ class WeatherService:
         unique_cities = list(dict.fromkeys(cities))
 
         try:
-            # Get weather data for all cities concurrently
-            weather_data_map = await self.api_client.get_batch_weather(unique_cities)
+            # Check cache for all cities first
+            cached_results = {}
+            cities_to_fetch = unique_cities
 
-            # Convert successful responses to our format
+            if self.cache_service:
+                cached_results = await self.cache_service.batch_get_weather(
+                    unique_cities
+                )
+                cities_to_fetch = [
+                    city for city in unique_cities if city not in cached_results
+                ]
+                logger.debug(
+                    "Cache hit for %d cities, need to fetch %d cities",
+                    len(cached_results),
+                    len(cities_to_fetch),
+                )
+
+            # Fetch remaining cities from API
+            api_results = {}
+            if cities_to_fetch:
+                weather_data_map = await self.api_client.get_batch_weather(
+                    cities_to_fetch
+                )
+
+                # Convert API responses to our format
+                for city in cities_to_fetch:
+                    if city in weather_data_map:
+                        weather_response = self._convert_to_weather_response(
+                            weather_data_map[city]
+                        )
+                        api_results[city] = weather_response
+
+                # Cache the new results
+                if self.cache_service and api_results:
+                    await self.cache_service.batch_set_weather(
+                        list(api_results.values())
+                    )
+
+            # Combine cached and fresh results
             results = []
             for city in unique_cities:
-                if city in weather_data_map:
-                    weather_response = self._convert_to_weather_response(
-                        weather_data_map[city]
-                    )
-                    results.append(weather_response)
+                if city in cached_results:
+                    results.append(cached_results[city])
+                elif city in api_results:
+                    results.append(api_results[city])
 
             return BatchWeatherResponse(
                 results=results,
