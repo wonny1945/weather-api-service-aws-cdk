@@ -89,7 +89,9 @@ class TestDynamoDbStackConfiguration:
             assert table_name.startswith(
                 f"{env}-weather-api"
             ), f"테이블 이름이 올바른 접두사를 가지지 않습니다: {table_name}"
-            assert "cache" in table_name, f"테이블 이름에 'cache'가 포함되지 않았습니다: {table_name}"
+            assert (
+                "cache" in table_name
+            ), f"테이블 이름에 'cache'가 포함되지 않았습니다: {table_name}"
 
     def test_common_tags_configuration(self):
         """공통 태그가 올바르게 설정되는지 확인"""
@@ -124,7 +126,9 @@ class TestDynamoDbStackSchemaDesign:
         # 이 값들이 DynamoDB 네이밍 규칙을 따르는지 확인
         assert expected_pk.isalnum(), "파티션 키 이름이 영숫자가 아닙니다"
         assert expected_sk.isalnum(), "정렬 키 이름이 영숫자가 아닙니다"
-        assert expected_ttl_field.replace("_", "").isalnum(), "TTL 필드 이름이 올바르지 않습니다"
+        assert expected_ttl_field.replace(
+            "_", ""
+        ).isalnum(), "TTL 필드 이름이 올바르지 않습니다"
 
     def test_cache_key_pattern_design(self):
         """캐시 키 패턴이 올바르게 설계되었는지 확인"""
@@ -139,7 +143,9 @@ class TestDynamoDbStackSchemaDesign:
 
         # 특수 문자 사용이 적절한지 확인
         assert "#" in expected_pk_pattern, "파티션 키에 구분자가 없습니다"
-        assert expected_pk_pattern.startswith("WEATHER#"), "파티션 키 접두사가 올바르지 않습니다"
+        assert expected_pk_pattern.startswith(
+            "WEATHER#"
+        ), "파티션 키 접두사가 올바르지 않습니다"
 
     def test_environment_specific_configurations(self):
         """환경별 특화 설정이 올바르게 구성되었는지 확인"""
@@ -169,7 +175,9 @@ class TestDynamoDbStackIntegration:
         required_outputs = ["table_name_output", "table_arn"]
 
         for output in required_outputs:
-            assert hasattr(DynamoDbStack, output), f"Lambda 통합에 필요한 출력 '{output}'이 없습니다"
+            assert hasattr(
+                DynamoDbStack, output
+            ), f"Lambda 통합에 필요한 출력 '{output}'이 없습니다"
 
     def test_constants_consistency(self):
         """DynamoDB 관련 상수들이 일관성 있게 정의되었는지 확인"""
@@ -201,4 +209,6 @@ class TestDynamoDbStackIntegration:
             imports_successful = False
             pytest.fail(f"필수 의존성을 import할 수 없습니다: {e}")
 
-        assert imports_successful, "DynamoDB Stack에 필요한 의존성을 import할 수 없습니다"
+        assert (
+            imports_successful
+        ), "DynamoDB Stack에 필요한 의존성을 import할 수 없습니다"
