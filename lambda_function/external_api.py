@@ -9,6 +9,9 @@ from typing import Dict, Any, Optional
 import aiohttp
 from pydantic import BaseModel, Field
 
+from config import RetryConfig, ExternalAPIConfig
+from retry_service import RetryConfig as RetryConfigClass, api_retry
+
 logger = logging.getLogger(__name__)
 
 
@@ -55,24 +58,36 @@ class OpenWeatherMapResponse(BaseModel):
 
 class OpenWeatherMapClient:
     """
-    Asynchronous client for OpenWeatherMap API.
+    Asynchronous client for OpenWeatherMap API with retry logic.
     """
 
-    def __init__(self, api_key: str, timeout: int = 10):
+    def __init__(self, api_key: str, timeout: int = None):
         """
         Initialize the OpenWeatherMap client.
 
         Args:
             api_key: OpenWeatherMap API key
-            timeout: Request timeout in seconds
+            timeout: Request timeout in seconds (defaults to config value)
         """
         self.api_key = api_key
-        self.base_url = "https://api.openweathermap.org/data/2.5"
-        self.timeout = aiohttp.ClientTimeout(total=timeout)
+        self.base_url = ExternalAPIConfig.OPENWEATHER_BASE_URL
+        self.timeout = aiohttp.ClientTimeout(
+            total=timeout or ExternalAPIConfig.OPENWEATHER_TIMEOUT
+        )
+
+        # Initialize retry configuration
+        self.retry_config = RetryConfigClass(
+            max_attempts=RetryConfig.API_MAX_ATTEMPTS,
+            base_delay=RetryConfig.API_BASE_DELAY,
+            backoff_multiplier=RetryConfig.API_BACKOFF_MULTIPLIER,
+            max_delay=RetryConfig.API_MAX_DELAY,
+            jitter=RetryConfig.API_JITTER,
+            jitter_range=RetryConfig.API_JITTER_RANGE,
+        )
 
     async def get_weather(self, city: str) -> OpenWeatherMapResponse:
         """
-        Get weather data for a single city.
+        Get weather data for a single city with retry logic.
 
         Args:
             city: Name of the city
@@ -81,27 +96,30 @@ class OpenWeatherMapClient:
             OpenWeatherMapResponse: Weather data
 
         Raises:
-            WeatherAPIError: If API request fails
+            WeatherAPIError: If API request fails after retries
         """
-        if not city or not city.strip():
-            raise WeatherAPIError("City name cannot be empty")
 
-        params = {
-            "q": city.strip(),
-            "appid": self.api_key,
-        }
+        # Apply retry decorator to the internal method
+        @api_retry(self.retry_config)
+        async def _get_weather_with_retry() -> OpenWeatherMapResponse:
+            if not city or not city.strip():
+                raise WeatherAPIError("City name cannot be empty")
 
-        url = f"{self.base_url}/weather"
+            params = {
+                "q": city.strip(),
+                "appid": self.api_key,
+            }
 
-        try:
+            url = f"{self.base_url}/weather"
+
             async with aiohttp.ClientSession(timeout=self.timeout) as session:
-                logger.info("Requesting weather data for city: %s", city)
+                logger.debug("Requesting weather data for city: %s", city)
 
                 async with session.get(url, params=params) as response:
                     response_data = await response.json()
 
                     if response.status == 200:
-                        logger.info("Successfully fetched weather for %s", city)
+                        logger.debug("Successfully fetched weather for %s", city)
                         return OpenWeatherMapResponse(**response_data)
 
                     if response.status == 404:
@@ -114,7 +132,7 @@ class OpenWeatherMapClient:
                         logger.error(error_msg)
                         raise WeatherAPIError(error_msg, status_code=401)
 
-                    # For other status codes
+                    # For other status codes (5xx will be retried, 4xx will not)
                     error_msg = response_data.get("message", "Unknown API error")
                     logger.error(
                         "API error for %s: %s (status: %d)",
@@ -122,17 +140,20 @@ class OpenWeatherMapClient:
                         error_msg,
                         response.status,
                     )
+                    # Create custom exception with status code for proper retry handling
+                    if 500 <= response.status < 600:
+                        # Server errors - should be retried
+                        raise aiohttp.ClientResponseError(
+                            request_info=None,
+                            history=None,
+                            status=response.status,
+                            message=error_msg,
+                        )
+
+                    # Client errors - should not be retried
                     raise WeatherAPIError(error_msg, status_code=response.status)
 
-        except aiohttp.ClientError as e:
-            error_msg = f"Network error while fetching weather for {city}: {str(e)}"
-            logger.error(error_msg)
-            raise WeatherAPIError(error_msg) from e
-
-        except asyncio.TimeoutError as e:
-            error_msg = f"Timeout while fetching weather for {city}"
-            logger.error(error_msg)
-            raise WeatherAPIError(error_msg) from e
+        return await _get_weather_with_retry()
 
     async def get_batch_weather(
         self, cities: list[str]
@@ -181,11 +202,13 @@ class OpenWeatherMapClient:
             bool: True if API is accessible, False otherwise
         """
         try:
-            # Use a known city for health check
+            # Use a known city for health check (with retry logic included)
             await self.get_weather("London")
+            logger.info("OpenWeatherMap API health check passed")
             return True
-        except WeatherAPIError:
+        except WeatherAPIError as e:
+            logger.warning("OpenWeatherMap API health check failed: %s", str(e))
             return False
         except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-            logger.error("Health check failed: %s", str(e))
+            logger.error("Network error during health check: %s", str(e))
             return False

@@ -11,7 +11,7 @@ repos:
 
   # Pylint - 코드 린팅 (lambda_function만)
   - repo: https://github.com/pycqa/pylint
-    rev: v3.0.3
+    rev: v3.3.8
     hooks:
       - id: pylint
         files: ^lambda_function/.*\.py$

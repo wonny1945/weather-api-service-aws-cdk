@@ -1,5 +1,5 @@
 """
-DynamoDB cache service for weather data.
+DynamoDB cache service for weather data with retry logic.
 """
 
 import logging
@@ -12,6 +12,8 @@ import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 
 from models import WeatherResponse
+from config import RetryConfig
+from retry_service import RetryConfig as RetryConfigClass, dynamodb_retry
 
 logger = logging.getLogger(__name__)
 
@@ -22,9 +24,9 @@ class CacheError(Exception):
 
 class DynamoDBCacheService:
     """
-    DynamoDB-based caching service for weather data.
+    DynamoDB-based caching service for weather data with retry logic.
 
-    Implements TTL-based caching with automatic expiration.
+    Implements TTL-based caching with automatic expiration and retry on failures.
     """
 
     def __init__(
@@ -45,6 +47,16 @@ class DynamoDBCacheService:
         self.ttl_minutes = ttl_minutes
         self.region = region
 
+        # Initialize retry configuration
+        self.retry_config = RetryConfigClass(
+            max_attempts=RetryConfig.DYNAMODB_MAX_ATTEMPTS,
+            base_delay=RetryConfig.DYNAMODB_BASE_DELAY,
+            backoff_multiplier=RetryConfig.DYNAMODB_BACKOFF_MULTIPLIER,
+            max_delay=RetryConfig.DYNAMODB_MAX_DELAY,
+            jitter=RetryConfig.DYNAMODB_JITTER,
+            jitter_range=RetryConfig.DYNAMODB_JITTER_RANGE,
+        )
+
         if not self.table_name:
             raise CacheError("DynamoDB table name not provided")
 
@@ -54,7 +66,7 @@ class DynamoDBCacheService:
             self.table = self.dynamodb.Table(self.table_name)
 
             logger.info(
-                "Initialized DynamoDB cache service for table: %s in %s",
+                "Initialized DynamoDB cache service for table: %s in %s with retry config",  # pylint: disable=line-too-long
                 self.table_name,
                 self.region,
             )
@@ -106,7 +118,7 @@ class DynamoDBCacheService:
 
     async def get_weather(self, city: str) -> Optional[WeatherResponse]:
         """
-        Get weather data from cache.
+        Get weather data from cache with retry logic.
 
         Args:
             city: City name
@@ -114,7 +126,9 @@ class DynamoDBCacheService:
         Returns:
             WeatherResponse if found and valid, None otherwise
         """
-        try:
+
+        @dynamodb_retry(self.retry_config)
+        def _get_weather_with_retry() -> Optional[WeatherResponse]:
             cache_key = self._generate_cache_key(city)
 
             response = self.table.get_item(Key={"PK": cache_key, "SK": "DATA"})
@@ -137,17 +151,16 @@ class DynamoDBCacheService:
             logger.debug("Cache miss for %s", city)
             return None
 
-        except ClientError as e:
+        try:
+            return _get_weather_with_retry()
+        except (ClientError, CacheError) as e:
             logger.error("DynamoDB error getting cache for %s: %s", city, e)
             # Don't raise exception - gracefully degrade to no cache
-            return None
-        except (ValueError, TypeError, KeyError) as e:
-            logger.error("Unexpected error getting cache for %s: %s", city, e)
             return None
 
     async def set_weather(self, weather_data: WeatherResponse) -> bool:
         """
-        Store weather data in cache.
+        Store weather data in cache with retry logic.
 
         Args:
             weather_data: Weather data to cache
@@ -155,7 +168,9 @@ class DynamoDBCacheService:
         Returns:
             True if successful, False otherwise
         """
-        try:
+
+        @dynamodb_retry(self.retry_config)
+        def _set_weather_with_retry() -> bool:
             cache_key = self._generate_cache_key(weather_data.city)
             expires_at = self._generate_expires_at()
 
@@ -176,20 +191,17 @@ class DynamoDBCacheService:
             logger.debug("Cached weather data for %s", weather_data.city)
             return True
 
-        except ClientError as e:
+        try:
+            return _set_weather_with_retry()
+        except (ClientError, CacheError) as e:
             logger.error(
                 "DynamoDB error caching weather for %s: %s", weather_data.city, e
-            )
-            return False
-        except (ValueError, TypeError, AttributeError) as e:
-            logger.error(
-                "Unexpected error caching weather for %s: %s", weather_data.city, e
             )
             return False
 
     async def batch_get_weather(self, cities: List[str]) -> Dict[str, WeatherResponse]:
         """
-        Get weather data for multiple cities from cache.
+        Get weather data for multiple cities from cache with retry logic.
 
         Args:
             cities: List of city names
@@ -200,7 +212,8 @@ class DynamoDBCacheService:
         if not cities:
             return {}
 
-        try:
+        @dynamodb_retry(self.retry_config)
+        def _batch_get_weather_with_retry() -> Dict[str, WeatherResponse]:
             # Prepare batch get request (limit to 100 items per DynamoDB constraints)
             cache_keys = [
                 {"PK": self._generate_cache_key(city), "SK": "DATA"}
@@ -230,16 +243,15 @@ class DynamoDBCacheService:
             )
             return cached_weather
 
-        except ClientError as e:
+        try:
+            return _batch_get_weather_with_retry()
+        except (ClientError, CacheError) as e:
             logger.error("DynamoDB error in batch get: %s", e)
-            return {}
-        except (ValueError, TypeError, KeyError, AttributeError) as e:
-            logger.error("Unexpected error in batch get: %s", e)
             return {}
 
     async def batch_set_weather(self, weather_data_list: List[WeatherResponse]) -> int:
         """
-        Store multiple weather data entries in cache.
+        Store multiple weather data entries in cache with retry logic.
 
         Args:
             weather_data_list: List of weather data to cache
@@ -250,7 +262,8 @@ class DynamoDBCacheService:
         if not weather_data_list:
             return 0
 
-        try:
+        @dynamodb_retry(self.retry_config)
+        def _batch_set_weather_with_retry() -> int:
             # Prepare batch write request (limit to 25 items per DynamoDB constraints)
             batch_items = []
             expires_at = self._generate_expires_at()
@@ -282,40 +295,43 @@ class DynamoDBCacheService:
             logger.debug("Batch cached %d weather entries", len(batch_items))
             return len(batch_items)
 
-        except ClientError as e:
+        try:
+            return _batch_set_weather_with_retry()
+        except (ClientError, CacheError) as e:
             logger.error("DynamoDB error in batch set: %s", e)
-            return 0
-        except (ValueError, TypeError, AttributeError) as e:
-            logger.error("Unexpected error in batch set: %s", e)
             return 0
 
     async def health_check(self) -> bool:
         """
-        Check if cache service is healthy.
+        Check if cache service is healthy with retry logic.
 
         Returns:
             True if healthy, False otherwise
         """
-        try:
+
+        @dynamodb_retry(self.retry_config)
+        def _health_check_with_retry() -> bool:
             # Simple describe table operation to test connectivity
             self.table.meta.client.describe_table(TableName=self.table_name)
             logger.debug("Cache health check passed")
             return True
-        except ClientError as e:
+
+        try:
+            return _health_check_with_retry()
+        except (ClientError, CacheError) as e:
             logger.error("Cache health check failed: %s", e)
-            return False
-        except (ValueError, TypeError, AttributeError) as e:
-            logger.error("Unexpected error in cache health check: %s", e)
             return False
 
     def get_cache_stats(self) -> Dict[str, any]:
         """
-        Get cache statistics (for monitoring/debugging).
+        Get cache statistics (for monitoring/debugging) with retry logic.
 
         Returns:
             Dictionary with cache statistics
         """
-        try:
+
+        @dynamodb_retry(self.retry_config)
+        def _get_cache_stats_with_retry() -> Dict[str, any]:
             table_info = self.table.meta.client.describe_table(
                 TableName=self.table_name
             )
@@ -325,7 +341,15 @@ class DynamoDBCacheService:
                 "table_status": table_info["Table"]["TableStatus"],
                 "ttl_minutes": self.ttl_minutes,
                 "region": self.region,
+                "retry_config": {
+                    "max_attempts": self.retry_config.max_attempts,
+                    "base_delay": self.retry_config.base_delay,
+                    "backoff_multiplier": self.retry_config.backoff_multiplier,
+                },
             }
-        except (ValueError, TypeError, KeyError, AttributeError) as e:
+
+        try:
+            return _get_cache_stats_with_retry()
+        except (ClientError, CacheError) as e:
             logger.error("Error getting cache stats: %s", e)
             return {"error": str(e)}
