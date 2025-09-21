@@ -596,14 +596,53 @@ class TestDocumentationEndpoints:
         assert "text/html" in response.headers["content-type"]
 
     def test_openapi_schema_accessible(self, client):
-        """Test that OpenAPI schema is accessible."""
+        """Test that OpenAPI schema is accessible without API key."""
         response = client.get("/openapi.json")
         assert response.status_code == 200
+        assert "application/json" in response.headers["content-type"]
 
         schema = response.json()
         assert "openapi" in schema
         assert "info" in schema
         assert schema["info"]["title"] == "Weather API Service"
+        assert schema["info"]["version"] == "1.0.0"
+
+    def test_openapi_schema_contains_security(self, client):
+        """Test that OpenAPI schema includes security schemes."""
+        response = client.get("/openapi.json")
+        schema = response.json()
+
+        # Check security schemes are defined
+        assert "components" in schema
+        assert "securitySchemes" in schema["components"]
+
+        # Check API key security schemes exist
+        security_schemes = schema["components"]["securitySchemes"]
+        assert "APIKeyQuery" in security_schemes
+        assert "APIKeyHeader" in security_schemes
+
+        # Verify API key types
+        assert security_schemes["APIKeyQuery"]["type"] == "apiKey"
+        assert security_schemes["APIKeyHeader"]["type"] == "apiKey"
+        assert security_schemes["APIKeyHeader"]["name"] == "X-API-Key"
+
+    def test_openapi_schema_contains_endpoints(self, client):
+        """Test that OpenAPI schema includes all API endpoints."""
+        response = client.get("/openapi.json")
+        schema = response.json()
+
+        assert "paths" in schema
+        paths = schema["paths"]
+
+        # Check main endpoints exist
+        assert "/weather/{city}" in paths
+        assert "/weather/batch" in paths
+        assert "/health" in paths
+
+        # Check HTTP methods
+        assert "get" in paths["/weather/{city}"]
+        assert "post" in paths["/weather/batch"]
+        assert "get" in paths["/health"]
 
 
 class TestCORSConfiguration:
