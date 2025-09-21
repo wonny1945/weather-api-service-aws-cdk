@@ -27,7 +27,6 @@ except ImportError:
 if __name__ == "__main__":
     print("Starting Weather API Service...")
     print("API Documentation: http://localhost:8000/docs")
-    print("ReDoc Documentation: http://localhost:8000/redoc")
 
     # Run the FastAPI app locally for development
     uvicorn.run(
