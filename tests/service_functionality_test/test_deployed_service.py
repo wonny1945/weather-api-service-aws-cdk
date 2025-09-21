@@ -9,9 +9,8 @@
 5. 응답 시간 비교 분석
 
 실행 방법:
-    uv run pytest tests/service_functionality_test/test_deployed_service.py -v
-    또는
-    python tests/service_functionality_test/test_deployed_service.py
+    uv run pytest tests/service_functionality_test/test_deployed_service.py -s
+
 """
 
 import os
@@ -608,6 +607,7 @@ class SimpleCacheTest:
 
 
 # Pytest 테스트 함수
+@pytest.mark.service_functionality
 def test_cache_performance():
     """캐시 성능 테스트"""
     test_instance = SimpleCacheTest()
@@ -637,6 +637,7 @@ def test_cache_performance():
     print(f"   성능 향상: {improvement:.1f}배 빠름")
 
 
+@pytest.mark.service_functionality
 def test_batch_cache_performance():
     """배치 캐시 성능 테스트"""
     test_instance = SimpleCacheTest()

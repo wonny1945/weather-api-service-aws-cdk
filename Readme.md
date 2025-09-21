@@ -283,8 +283,10 @@ weather-api/
 ### 개발 명령어
 ```bash
 # 테스트
-uv run pytest                                      # 전체 테스트 실행
+uv run pytest                                      # CI/CD용 테스트 실행 (배포된 서비스 테스트 제외)
 uv run pytest --cov=lambda_function --cov-report=html  # 커버리지 포함
+uv run pytest -m "service_functionality"          # 배포된 서비스 기능 테스트만 실행
+uv run pytest tests/service_functionality_test/   # 배포된 서비스 테스트 디렉토리 직접 실행
 
 # 코드 품질
 uv run black lambda_function/ tests/               # 코드 포맷팅
@@ -297,6 +299,35 @@ sam local start-api                                # Lambda 시뮬레이션
 # 배포
 cd infrastructure && cdk deploy WeatherStack-dev   # 개발 환경 배포
 ```
+
+### 🧪 테스트 분류
+
+이 프로젝트는 다음과 같은 테스트 분류를 사용합니다:
+
+#### Unit/Integration Tests
+- **위치**: `tests/lambda_function/`, `tests/infrastructure/`
+- **실행**: CI/CD 파이프라인에서 자동 실행
+- **목적**: 코드 품질 보장, 로직 검증
+```bash
+uv run pytest tests/lambda_function/ tests/infrastructure/
+```
+
+#### Service Functionality Tests
+- **위치**: `tests/service_functionality_test/`
+- **실행**: 배포 후 수동 실행 (CI/CD에서 제외)
+- **목적**: 실제 배포된 서비스의 기능 및 성능 검증
+- **요구사항**:
+  - 배포된 AWS 인프라 필요
+  - `.env.local` 환경 변수 설정 필요 (`DEPLOYED_API_ENDPOINT`, `TEST_OPENWEATHER_API_KEY` 등)
+
+```bash
+# 배포 후 실행할 서비스 기능 테스트
+cp .env.local.example .env.local  # 환경 변수 설정
+# .env.local 파일에 DEPLOYED_API_ENDPOINT, TEST_OPENWEATHER_API_KEY 등 설정
+uv run pytest tests/service_functionality_test/ -v
+```
+
+> **⚠️ 중요**: Service Functionality Tests는 실제 AWS 리소스를 사용하므로 비용이 발생할 수 있습니다. 개발 환경에서만 실행하세요.
 
 ## 📊 모니터링
 
