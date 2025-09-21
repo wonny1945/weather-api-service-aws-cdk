@@ -189,7 +189,7 @@ class TestSingleWeatherEndpoint:
         )
         mock_weather_service.return_value = mock_service_instance
 
-        response = client.get(f"/weather/seoul?api_key=invalid_key")
+        response = client.get(f"/weather/seoul?api_key=Invalid-api-key")
 
         assert response.status_code == 401
         data = response.json()
