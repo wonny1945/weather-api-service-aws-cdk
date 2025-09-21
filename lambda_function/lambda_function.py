@@ -59,8 +59,9 @@ app = FastAPI(
     description="Serverless weather API service",
     version="1.0.0",
     docs_url="/docs",
-    openapi_url=f"{STAGE_PREFIX}/openapi.json",  # Points to custom endpoint
+    openapi_url="/openapi.json",  # Dynamic stage prefix
     redoc_url=None,
+    root_path=STAGE_PREFIX,
 )
 
 # Configure CORS
@@ -71,13 +72,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-# Custom OpenAPI endpoint with stage prefix
-@app.get(f"{STAGE_PREFIX}/openapi.json", include_in_schema=False)
-async def custom_openapi():
-    """Return OpenAPI specification with stage prefix support."""
-    return app.openapi()
 
 
 # Health check endpoint
