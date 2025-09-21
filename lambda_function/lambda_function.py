@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException, Security
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyQuery, APIKeyHeader
-from fastapi.openapi.docs import get_swagger_ui_html
+
 from mangum import Mangum
 from external_api import WeatherAPIError
 from weather_service import WeatherService
@@ -55,6 +55,9 @@ app = FastAPI(
     title="Weather API Service",
     description="Serverless weather API service",
     version="1.0.0",
+    docs_url="/docs",
+    openapi_url="/openapi.json",  # Required for Lambda environment
+    redoc_url=None,
 )
 
 # Configure CORS
@@ -65,23 +68,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-# Custom OpenAPI endpoint without API key requirement
-@app.get("/openapi.json", include_in_schema=False)
-async def custom_openapi():
-    """Return OpenAPI specification without requiring API key."""
-    return app.openapi()
-
-
-# Custom Swagger UI endpoint without API key requirement
-@app.get("/docs", include_in_schema=False)
-async def custom_swagger_ui():
-    """Return Swagger UI without requiring API key."""
-    return get_swagger_ui_html(
-        openapi_url="/openapi.json",
-        title="Weather API Documentation",
-    )
 
 
 # Health check endpoint

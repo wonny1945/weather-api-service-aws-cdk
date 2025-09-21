@@ -590,10 +590,9 @@ class TestDocumentationEndpoints:
         assert "text/html" in response.headers["content-type"]
 
     def test_redoc_accessible(self, client):
-        """Test that ReDoc is accessible."""
+        """Test that ReDoc is disabled (returns 404)."""
         response = client.get("/redoc")
-        assert response.status_code == 200
-        assert "text/html" in response.headers["content-type"]
+        assert response.status_code == 404
 
     def test_openapi_schema_accessible(self, client):
         """Test that OpenAPI schema is accessible without API key."""
