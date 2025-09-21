@@ -52,14 +52,15 @@ disable = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests/lambda_function", "tests/infrastructure"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
-pythonpath = [".", "lambda_function", "infrastructure"]  
+pythonpath = [".", "lambda_function", "infrastructure"]
 markers = [
     "integration: marks tests as integration tests",
-    "unit: marks tests as unit tests"
+    "unit: marks tests as unit tests",
+    "service_functionality: marks tests for deployed service functionality (excluded from CI)"
 ]
 
 [dependency-groups]
@@ -82,4 +83,5 @@ dev = [
     "python-dotenv>=1.0.0",
     "python-dateutil>=2.8.2",
     "aiohttp>=3.12.15",
+    "requests>=2.31.0",
 ]
