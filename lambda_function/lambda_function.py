@@ -68,6 +68,13 @@ app.add_middleware(
 )
 
 
+# Custom OpenAPI endpoint without API key requirement
+@app.get("/openapi.json", include_in_schema=False)
+async def custom_openapi():
+    """Return OpenAPI specification without requiring API key."""
+    return app.openapi()
+
+
 # Health check endpoint
 @app.get("/health")
 async def health_check(api_key: str = Security(get_api_key)):
