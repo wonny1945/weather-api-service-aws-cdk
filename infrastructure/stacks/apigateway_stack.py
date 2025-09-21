@@ -137,6 +137,9 @@ class APIGatewayStack(Stack):
         # GET /health - Health check
         self.health_resource = self.api.root.add_resource("health")
 
+        # GET /docs - Swagger UI documentation
+        self.docs_resource = self.api.root.add_resource("docs")
+
     def add_lambda_integration(
         self,
         lambda_function: lambda_.Function,
@@ -159,6 +162,7 @@ class APIGatewayStack(Stack):
         self.city_resource.add_method("GET", lambda_integration)
         self.batch_resource.add_method("POST", lambda_integration)
         self.health_resource.add_method("GET", lambda_integration)
+        self.docs_resource.add_method("GET", lambda_integration)
 
         # Note: LambdaIntegration automatically grants necessary permissions
         # Manual add_permission is not required and causes circular dependency

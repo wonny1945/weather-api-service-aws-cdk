@@ -6,9 +6,10 @@ import logging
 import os
 from datetime import datetime
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Security
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.security import APIKeyQuery, APIKeyHeader
 from mangum import Mangum
 from external_api import WeatherAPIError
 from weather_service import WeatherService
@@ -32,6 +33,22 @@ logger = logging.getLogger(__name__)
 # Note: Weather service is now created per-request with user's API key
 # No global service instance needed
 
+# Define API key security schemes
+api_key_query = APIKeyQuery(name="api_key", auto_error=False)
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+def get_api_key(
+    query_key: str = Security(api_key_query),
+    header_key: str = Security(api_key_header),
+) -> str:
+    """Extract API key from query parameter or header."""
+    api_key = query_key or header_key
+    if not api_key or not api_key.strip():
+        raise HTTPException(status_code=400, detail="API key is required")
+    return api_key.strip()
+
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Weather API Service",
@@ -53,22 +70,12 @@ app.add_middleware(
 
 # Health check endpoint
 @app.get("/health")
-async def health_check(api_key: str = None):
-    """Health check endpoint with optional API validation."""
+async def health_check(api_key: str = Security(get_api_key)):
+    """Health check endpoint with API validation."""
     try:
-        if api_key:
-            # Test with user's API key
-            service = WeatherService(api_key.strip())
-            health_status = await service.health_check()
-        else:
-            # Basic service health without API key
-            health_status = {
-                "status": "healthy",
-                "timestamp": datetime.now().isoformat(),
-                "message": (
-                    "Service is running " "(no API key provided for external API test)"
-                ),
-            }
+        # Test with user's API key (already validated by security dependency)
+        service = WeatherService(api_key)
+        health_status = await service.health_check()
         return health_status
     except (WeatherAPIError, ValueError) as e:
         logger.error("Health check failed: %s", str(e))
@@ -98,7 +105,7 @@ async def root():
 
 # Single city weather endpoint
 @app.get("/weather/{city}", response_model=WeatherResponse)
-async def get_weather(city: str, api_key: str):
+async def get_weather(city: str, api_key: str = Security(get_api_key)):
     """
     Get weather information for a single city.
 
@@ -113,12 +120,8 @@ async def get_weather(city: str, api_key: str):
         HTTPException: If city is not found or service unavailable
     """
     try:
-        # Validate API key
-        if not api_key or not api_key.strip():
-            raise HTTPException(status_code=400, detail="API key is required")
-
-        # Create service with user's API key
-        service = WeatherService(api_key.strip())
+        # Create service with user's API key (already validated by security dependency)
+        service = WeatherService(api_key)
         weather_data = await service.get_weather(city)
         return weather_data
 
@@ -148,12 +151,15 @@ async def get_weather(city: str, api_key: str):
 
 # Batch weather endpoint
 @app.post("/weather/batch", response_model=BatchWeatherResponse)
-async def get_batch_weather(request: BatchWeatherRequest):
+async def get_batch_weather(
+    request: BatchWeatherRequest, api_key: str = Security(get_api_key)
+):
     """
     Get weather information for multiple cities.
 
     Args:
-        request: BatchWeatherRequest containing list of cities and API key
+        request: BatchWeatherRequest containing list of cities
+        api_key: OpenWeatherMap API key (from security dependency)
 
     Returns:
         BatchWeatherResponse: Weather information for all cities
@@ -162,12 +168,8 @@ async def get_batch_weather(request: BatchWeatherRequest):
         HTTPException: If request is invalid or service unavailable
     """
     try:
-        # Validate API key
-        if not request.api_key or not request.api_key.strip():
-            raise HTTPException(status_code=400, detail="API key is required")
-
-        # Create service with user's API key
-        service = WeatherService(request.api_key.strip())
+        # Create service with user's API key (already validated by security dependency)
+        service = WeatherService(api_key)
         batch_data = await service.get_batch_weather(request.cities, MAX_BATCH_CITIES)
         return batch_data
 

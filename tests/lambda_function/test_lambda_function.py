@@ -88,15 +88,12 @@ class TestHealthEndpoint:
     """Test cases for the health check endpoint."""
 
     def test_health_check_without_api_key(self, client):
-        """Test health check without API key provides basic status."""
+        """Test health check without API key returns validation error."""
         response = client.get("/health")
 
-        assert response.status_code == 200
+        assert response.status_code == 400
         data = response.json()
-
-        assert data["status"] == "healthy"
-        assert "timestamp" in data
-        assert "Service is running" in data["message"]
+        assert "API key is required" in data["detail"]
 
     @patch("lambda_function.lambda_function.WeatherService")
     def test_health_check_with_valid_api_key(self, mock_weather_service, client):
@@ -110,7 +107,9 @@ class TestHealthEndpoint:
         }
         mock_weather_service.return_value = mock_service_instance
 
-        response = client.get(f"/health?api_key={TEST_API_KEY}")
+        # Use header for API key
+        headers = {"X-API-Key": TEST_API_KEY}
+        response = client.get("/health", headers=headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -119,13 +118,11 @@ class TestHealthEndpoint:
         assert "checks" in data
         # Note: Mock verification skipped - testing actual API integration
 
-    @patch("weather_service.WeatherService")
-    def test_health_check_with_invalid_api_key(self, mock_weather_service, client):
+    def test_health_check_with_invalid_api_key(self, client):
         """Test health check with invalid API key returns error status."""
-        # Mock service that raises WeatherAPIError
-        mock_weather_service.side_effect = WeatherAPIError("Invalid API key", 401)
-
-        response = client.get(f"/health?api_key=invalid_key")
+        # Use obviously invalid API key to trigger error
+        headers = {"X-API-Key": "invalid_key_12345"}
+        response = client.get("/health", headers=headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -172,7 +169,7 @@ class TestSingleWeatherEndpoint:
         """Test weather endpoint without API key returns error."""
         response = client.get("/weather/seoul")
 
-        assert response.status_code == 422  # FastAPI validation error
+        assert response.status_code == 400  # API key required error
 
     def test_get_weather_empty_api_key(self, client):
         """Test weather endpoint with empty API key returns error."""
@@ -307,9 +304,10 @@ class TestBatchWeatherEndpoint:
         mock_service_instance.get_batch_weather.return_value = mock_batch_response
         mock_weather_service.return_value = mock_service_instance
 
-        payload = {"cities": cities, "api_key": TEST_API_KEY}
+        payload = {"cities": cities}
+        headers = {"X-API-Key": TEST_API_KEY}
 
-        response = client.post("/weather/batch", json=payload)
+        response = client.post("/weather/batch", json=payload, headers=headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -340,9 +338,10 @@ class TestBatchWeatherEndpoint:
         mock_service_instance.get_batch_weather.return_value = mock_batch_response
         mock_weather_service.return_value = mock_service_instance
 
-        payload = {"cities": ["seoul"], "api_key": TEST_API_KEY}
+        payload = {"cities": ["seoul"]}
+        headers = {"X-API-Key": TEST_API_KEY}
 
-        response = client.post("/weather/batch", json=payload)
+        response = client.post("/weather/batch", json=payload, headers=headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -384,9 +383,10 @@ class TestBatchWeatherEndpoint:
         mock_service_instance.get_batch_weather.return_value = mock_batch_response
         mock_weather_service.return_value = mock_service_instance
 
-        payload = {"cities": cities, "api_key": TEST_API_KEY}
+        payload = {"cities": cities}
+        headers = {"X-API-Key": TEST_API_KEY}
 
-        response = client.post("/weather/batch", json=payload)
+        response = client.post("/weather/batch", json=payload, headers=headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -399,13 +399,16 @@ class TestBatchWeatherEndpoint:
 
         response = client.post("/weather/batch", json=payload)
 
-        assert response.status_code == 422  # Pydantic validation error
+        assert response.status_code == 400  # API key required error
+        data = response.json()
+        assert "API key is required" in data["detail"]
 
     def test_batch_weather_empty_api_key(self, client):
         """Test batch endpoint with empty API key."""
-        payload = {"cities": ["seoul", "busan"], "api_key": ""}
+        payload = {"cities": ["seoul", "busan"]}
+        headers = {"X-API-Key": ""}
 
-        response = client.post("/weather/batch", json=payload)
+        response = client.post("/weather/batch", json=payload, headers=headers)
 
         assert response.status_code == 400
         data = response.json()
@@ -421,9 +424,10 @@ class TestBatchWeatherEndpoint:
         )
         mock_weather_service.return_value = mock_service_instance
 
-        payload = {"cities": ["seoul", "busan"], "api_key": "invalid_key"}
+        payload = {"cities": ["seoul", "busan"]}
+        headers = {"X-API-Key": "invalid_key"}
 
-        response = client.post("/weather/batch", json=payload)
+        response = client.post("/weather/batch", json=payload, headers=headers)
 
         assert (
             response.status_code == 200
@@ -437,16 +441,14 @@ class TestBatchWeatherEndpoint:
     def test_batch_weather_invalid_payload(self, client):
         """Test batch endpoint with invalid payload structure."""
         invalid_payloads = [
-            {},  # Missing cities and api_key
-            {"api_key": TEST_API_KEY},  # Missing cities
-            {"cities": ["seoul"]},  # Missing api_key
-            {"cities": "seoul", "api_key": TEST_API_KEY},  # String instead of list
-            {"cities": [123], "api_key": TEST_API_KEY},  # Invalid city type
+            {},  # Missing cities
+            {"cities": "seoul"},  # String instead of list
+            {"cities": [123]},  # Invalid city type
         ]
 
         for payload in invalid_payloads:
             response = client.post("/weather/batch", json=payload)
-            assert response.status_code == 422  # Pydantic validation error
+            assert response.status_code == 400  # API key required error comes first
 
     def test_batch_weather_response_model_validation(self, client):
         """Test that batch response matches BatchWeatherResponse model."""
@@ -460,8 +462,9 @@ class TestBatchWeatherEndpoint:
             mock_service_instance.get_batch_weather.return_value = mock_batch_response
             mock_weather_service.return_value = mock_service_instance
 
-            payload = {"cities": ["seoul", "busan"], "api_key": TEST_API_KEY}
-            response = client.post("/weather/batch", json=payload)
+            payload = {"cities": ["seoul", "busan"]}
+            headers = {"X-API-Key": TEST_API_KEY}
+            response = client.post("/weather/batch", json=payload, headers=headers)
             data = response.json()
 
             # Should not raise validation error
@@ -501,18 +504,17 @@ class TestPydanticModels:
 
     def test_batch_weather_request_model(self):
         """Test BatchWeatherRequest model validation."""
-        valid_data = {"cities": ["seoul", "busan"], "api_key": TEST_API_KEY}
+        valid_data = {"cities": ["seoul", "busan"]}
 
         request = BatchWeatherRequest(**valid_data)
         assert request.cities == ["seoul", "busan"]
-        assert request.api_key == TEST_API_KEY
 
     def test_batch_weather_request_model_invalid(self):
         """Test BatchWeatherRequest model with invalid data."""
         invalid_data_sets = [
-            {"cities": "seoul", "api_key": TEST_API_KEY},  # String instead of list
-            {"cities": ["seoul"], "api_key": 123},  # Invalid api_key type
-            {"cities": ["seoul"]},  # Missing api_key
+            {"cities": "seoul"},  # String instead of list
+            {"cities": [123]},  # Invalid city type
+            {},  # Missing cities
         ]
 
         for invalid_data in invalid_data_sets:
@@ -657,7 +659,8 @@ class TestIntegrationWorkflow:
         assert root_response.status_code == 200
 
         # Step 2: Check health with API key
-        health_response = client.get(f"/health?api_key={TEST_API_KEY}")
+        headers = {"X-API-Key": TEST_API_KEY}
+        health_response = client.get("/health", headers=headers)
         assert health_response.status_code == 200
 
         # Step 3: Get single city weather
@@ -665,8 +668,10 @@ class TestIntegrationWorkflow:
         assert single_response.status_code == 200
 
         # Step 4: Get batch weather
-        batch_payload = {"cities": ["seoul", "busan", "tokyo"], "api_key": TEST_API_KEY}
-        batch_response = client.post("/weather/batch", json=batch_payload)
+        batch_payload = {"cities": ["seoul", "busan", "tokyo"]}
+        batch_response = client.post(
+            "/weather/batch", json=batch_payload, headers=headers
+        )
         assert batch_response.status_code == 200
 
         # Verify all responses are consistent
