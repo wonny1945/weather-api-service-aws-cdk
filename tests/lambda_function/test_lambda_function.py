@@ -596,7 +596,7 @@ class TestDocumentationEndpoints:
 
     def test_openapi_schema_accessible(self, client):
         """Test that OpenAPI schema is accessible without API key."""
-        response = client.get("/openapi.json")
+        response = client.get("/dev/openapi.json")
         assert response.status_code == 200
         assert "application/json" in response.headers["content-type"]
 
@@ -608,7 +608,7 @@ class TestDocumentationEndpoints:
 
     def test_openapi_schema_contains_security(self, client):
         """Test that OpenAPI schema includes security schemes."""
-        response = client.get("/openapi.json")
+        response = client.get("/dev/openapi.json")
         schema = response.json()
 
         # Check security schemes are defined
@@ -627,7 +627,7 @@ class TestDocumentationEndpoints:
 
     def test_openapi_schema_contains_endpoints(self, client):
         """Test that OpenAPI schema includes all API endpoints."""
-        response = client.get("/openapi.json")
+        response = client.get("/dev/openapi.json")
         schema = response.json()
 
         assert "paths" in schema
