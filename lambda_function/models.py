@@ -20,7 +20,6 @@ class BatchWeatherRequest(BaseModel):
     """Request model for batch weather queries."""
 
     cities: List[str]
-    api_key: str
 
 
 class BatchWeatherResponse(BaseModel):
