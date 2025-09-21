@@ -21,8 +21,11 @@ from models import (
 )
 
 # Simple configuration
-ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
-OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
+ENVIRONMENT = os.getenv("ENV", "dev")
+
+# Set stage prefix based on environment
+STAGE_PREFIX = f"/{ENVIRONMENT}"
+
 MAX_BATCH_CITIES = 10
 
 # Configure logging
@@ -56,7 +59,7 @@ app = FastAPI(
     description="Serverless weather API service",
     version="1.0.0",
     docs_url="/docs",
-    openapi_url="/openapi.json",  # Required for Lambda environment
+    openapi_url=f"{STAGE_PREFIX}/openapi.json",  # Dynamic stage prefix
     redoc_url=None,
 )
 
